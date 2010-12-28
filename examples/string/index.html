@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<title>Example 1</title>
+		<style type="text/css">
+			html,body {
+				margin:0;
+				padding:0;
+				font-family:Tahoma;
+				font-size:12px;
+			}
+			input,textarea,select {
+				font-family:Tahoma;
+				font-size:12px;
+			}
+		</style>
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+		<script type="text/javascript" src="../../jquery.jcryption-1.1.min.js"></script>
+		<script type="text/javascript">
+			var $loader = $('<img src="loading.gif" alt="Loading..." title="Loading..." style="margin-right:15px;" />');
+			$(function() {
+				
+				var keys;
+				$.jCryption.getKeys("encrypt.php?generateKeypair=true",function(receivedKeys) {
+					keys = receivedKeys;
+					$("#toEncrypt").attr("disabled",false);
+					$("#encrypt").attr("disabled",false);
+					$("#status").html('<span style="font-size: 16px;">Ready to encrypt</span>');
+				});
+				
+				$("#encrypt").click(function() {
+					$.jCryption.encrypt($("#toEncrypt").val(),keys,function(encrypted) {
+						$("#toDecrypt").val(encrypted);
+					});
+				});
+				
+				$("#decrypt").click(function() {
+					$("#result").html($loader);
+					$.ajax({
+						type: 'POST',
+						url: "encrypt.php",
+						data: {jCryption:$("#toDecrypt").val()},
+						success: function(data) {
+							$("#result").html(data);
+						}
+					});
+				});
+
+			});
+		</script>
+	</head>
+
+	<body>
+		<p id="status"><span style="font-size: 16px;">Waiting for Keys</span> <img src="loading.gif" alt="Loading..." title="Loading..." style="margin-right:15px;" /></p>
+		String: <input type="text" id="toEncrypt" disabled="disabled" /> <button id="encrypt" disabled="disabled">Encrypt</button><br/>
+		Encrypted String:<br/>
+		<textarea cols="40" rows="5" id="toDecrypt"></textarea><br/><button id="decrypt">Decrypt</button><br/><br/>
+		Decrypted:<p id="result"></p>
+	</body>
+</html>
