@@ -36,12 +36,12 @@
 			$submitElement.bind(base.options.submitEvent,function() {
 				$(this).attr("disabled",true);
 				if(base.options.beforeEncryption()) {
-					   $.jCryption.getKeys(base.options.getKeysURL,function(keys) {
-						   $.jCryption.encrypt(base.$el.serialize(),keys,function(encrypted) {
-						   	   $encryptedElement.val(encrypted);
-						   	   $(base.$el).find(":input").attr("disabled",true).end().append($encryptedElement).submit();
-						   });
-					   });
+					$.jCryption.getKeys(base.options.getKeysURL,function(keys) {
+						$.jCryption.encrypt(base.$el.serialize(),keys,function(encrypted) {
+							$encryptedElement.val(encrypted);
+							$(base.$el).find(formFieldSelector).attr("disabled",true).end().append($encryptedElement).submit();
+						});
+					});
 				}
 				return false;
 			});
@@ -135,7 +135,8 @@
 		submitEvent:"click",
 		getKeysURL:"main.php?generateKeypair=true",
 		beforeEncryption:function(){return true},
-		postVariable:"jCryption"
+		postVariable:"jCryption",
+		formFieldSelector:":input"
 	};
 
 	$.fn.jCryption = function(options) {
