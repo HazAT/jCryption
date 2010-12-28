@@ -1,6 +1,6 @@
 <?php
 	session_start();
-	require_once("../../jCryption-1.1.php");
+	require_once("../../jcryption.php");
 	$keyLength = 256;
 	$jCryption = new jCryption();
 	if(isset($_GET["generateKeypair"])) {
