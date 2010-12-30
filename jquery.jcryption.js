@@ -39,7 +39,7 @@
 					$.jCryption.getKeys(base.options.getKeysURL,function(keys) {
 						$.jCryption.encrypt(base.$el.serialize(),keys,function(encrypted) {
 							$encryptedElement.val(encrypted);
-							$(base.$el).find(formFieldSelector).attr("disabled",true).end().append($encryptedElement).submit();
+							$(base.$el).find(base.options.formFieldSelector).attr("disabled",true).end().append($encryptedElement).submit();
 						});
 					});
 				}
