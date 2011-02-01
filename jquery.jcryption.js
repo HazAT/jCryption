@@ -119,7 +119,7 @@
 					if($.isFunction(callback)) {
 						callback(encryptedString);
 					} else {
-					 	return encryptedString;
+						return encryptedString;
 					}
 
 				}
@@ -461,7 +461,6 @@ function biMultiply(x, y) {
 
 function biMultiplyDigit(x, y) {
 	var n, c, uv;
-
 	var result = new BigInt();
 	n = biHighIndex(x);
 	c = 0;
