@@ -635,7 +635,7 @@ class jCryption {
 	 * @access public
 	 */
 	function decrypt($encrypted, $dec_key, $enc_mod) {
-		$blocks = split(' ', $encrypted);
+		$blocks = explode(' ', $encrypted);
 		$result = "";
 		$max = count($blocks);
 		for ($i = 0; $i < $max; $i++) {

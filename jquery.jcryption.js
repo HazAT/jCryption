@@ -462,7 +462,7 @@ function biMultiply(x, y) {
 function biMultiplyDigit(x, y) {
 	var n, c, uv;
 
-	result = new BigInt();
+	var result = new BigInt();
 	n = biHighIndex(x);
 	c = 0;
 	for (var j = 0; j <= n; ++j) {
