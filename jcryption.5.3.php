@@ -338,5 +338,5 @@ class jCryption {
 
 		return strtolower($string);
 	}
-
 }
+
