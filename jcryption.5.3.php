@@ -19,7 +19,7 @@
 * @author     Daniel Griesser <daniel.griesser@jcryption.org>
 * @copyright  2011 Daniel Griesser
 * @license    http://www.php.net/license/3_0.txt PHP License 3.0
-* @version    1.1
+* @version    1.2
 * @link       http://jcryption.org/
 */
 class jCryption {

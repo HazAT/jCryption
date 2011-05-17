@@ -1,5 +1,5 @@
 /*
-* jCryption JavaScript data encryption v1.1
+* jCryption JavaScript data encryption v1.2
 * http://www.jcryption.org/
 *
 * Copyright (c) 2010 Daniel Griesser
@@ -36,8 +36,8 @@
 			$submitElement.bind(base.options.submitEvent,function() {
 				$(this).attr("disabled",true);
 				if(base.options.beforeEncryption()) {
-					$.jCryption.getKeys(base.options.getKeysURL,function(keys) {
-						$.jCryption.encrypt(base.$el.serialize(),keys,function(encrypted) {
+					$.jCryption.getKeys(base.options.getKeysURL, function(keys) {
+						$.jCryption.encrypt(base.$el.serialize(), keys,function(encrypted) {
 							$encryptedElement.val(encrypted);
 							$(base.$el).find(base.options.formFieldSelector).attr("disabled",true).end().append($encryptedElement).submit();
 						});
@@ -52,17 +52,7 @@
 	};
 
 	$.jCryption.getKeys = function(url,callback) {
-		var base = this;
-		base.getKeys = function() {
-			$.getJSON(url,function(data){
-				keys = new base.jCryptionKeyPair(data.e,data.n,data.maxdigits);
-				if($.isFunction(callback)) {
-					callback.call(this, keys);
-				}
-			});
-		};
-
-		base.jCryptionKeyPair = function(encryptionExponent, modulus, maxdigits) {
+		var jCryptionKeyPair = function(encryptionExponent, modulus, maxdigits) {
 			setMaxDigits(parseInt(maxdigits,10));
 			this.e = biFromHex(encryptionExponent);
 			this.m = biFromHex(modulus);
@@ -71,7 +61,12 @@
 			this.barrett = new BarrettMu(this.m);
 		};
 
-		base.getKeys();
+		$.getJSON(url,function(data){
+			var keys = new jCryptionKeyPair(data.e,data.n,data.maxdigits);
+			if($.isFunction(callback)) {
+				callback.call(this, keys);
+			}
+		});
 	};
 
 	$.jCryption.encrypt = function(string,keyPair,callback) {

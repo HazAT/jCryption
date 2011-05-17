@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-		<title>Example 1</title>
+		<title>String Encryption</title>
 		<style type="text/css">
 			html,body {
 				margin:0;
@@ -15,7 +15,7 @@
 				font-size:12px;
 			}
 		</style>
-		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
 		<script type="text/javascript" src="../../jquery.jcryption.js"></script>
 		<script type="text/javascript">
 			var $loader = $('<img src="loading.gif" alt="Loading..." title="Loading..." style="margin-right:15px;" />');
@@ -30,7 +30,7 @@
 				});
 
 				$("#encrypt").click(function() {
-					$.jCryption.encrypt($("#toEncrypt").val(),keys,function(encrypted) {
+					$.jCryption.encrypt(encodeURIComponent($("#toEncrypt").val()),keys,function(encrypted) {
 						$("#toDecrypt").val(encrypted);
 					});
 				});
