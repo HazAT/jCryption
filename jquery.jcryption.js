@@ -37,7 +37,11 @@
 				$(this).attr("disabled",true);
 				if(base.options.beforeEncryption()) {
 					$.jCryption.getKeys(base.options.getKeysURL, function(keys) {
-						$.jCryption.encrypt(base.$el.serialize(), keys,function(encrypted) {
+						var toEncrypt = base.$el.serialize();
+						if ($submitElement.is(":submit")) {
+							toEncrypt = toEncrypt + "&" + $submitElement.attr("name") + "=" + $submitElement.val();
+						}
+						$.jCryption.encrypt(toEncrypt, keys, function(encrypted) {
 							$encryptedElement.val(encrypted);
 							$(base.$el).find(base.options.formFieldSelector).attr("disabled",true).end().append($encryptedElement).submit();
 						});
