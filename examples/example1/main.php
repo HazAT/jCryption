@@ -11,6 +11,14 @@ if(isset($_GET["generateKeypair"])) {
 	$_SESSION["n"] = array("int" => $keys["n"], "hex" => $jCryption->dec2string($keys["n"],16));
 
 	echo '{"e":"'.$_SESSION["e"]["hex"].'","n":"'.$_SESSION["n"]["hex"].'","maxdigits":"'.intval($keyLength*2/16+3).'"}';
+} elseif (isset($_GET["handshake"])) {
+	$key = $jCryption->decrypt($_POST['key'], $_SESSION["d"]["int"], $_SESSION["n"]["int"]);
+	unset($_SESSION["e"]);
+	unset($_SESSION["d"]);
+	unset($_SESSION["n"]);
+	$_SESSION["key"] = $key;
+	echo json_encode(array("challenge" => AesCtr::encrypt("accpected", $key, 256)));
+	exit();
 } else {
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -31,7 +39,8 @@ html,body {
 
 <p><strong>orignial POST:</strong> <br/><?php print_r($_POST); ?></p>
 <?php
-$var = $jCryption->decrypt($_POST['jCryption'], $_SESSION["d"]["int"], $_SESSION["n"]["int"]);
+//$var = $jCryption->decrypt($_POST['jCryption'], $_SESSION["d"]["int"], $_SESSION["n"]["int"]);
+$var = AesCtr::decrypt($_POST['jCryption'], $_SESSION["key"], 256);
 unset($_SESSION["e"]);
 unset($_SESSION["d"]);
 unset($_SESSION["n"]);
