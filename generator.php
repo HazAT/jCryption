@@ -1,6 +1,6 @@
 <?php
 
-require_once("jcryption.5.3.php");
+require_once("jCryption.php");
 
 $keyLength = 1024;
 $jCryption = new jCryption();
