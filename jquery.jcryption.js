@@ -61,6 +61,7 @@
 						}, 
 						function() {
 						// Authentication with AES Failed ... sending form without protection
+							$(base.$el).submit();
 						}
 					);
 				}
@@ -209,14 +210,14 @@
 	};
 	
 	$.jCryption.defaultOptions = {
-		submitElement:false,
-		submitEvent:"click",
-		getKeysURL:"main.php?generateKeypair=true",
-		challengeURL:"main.php?challenge=true",
-		handshakeURL:"main.php?handshake=true",
-		beforeEncryption:function(){return true},
-		postVariable:"jCryption",
-		formFieldSelector:":input"
+		submitElement: false,
+		submitEvent: "click",
+		getKeysURL: "main.php?generateKeypair=true",
+		challengeURL: "main.php?challenge=true",
+		handshakeURL: "main.php?handshake=true",
+		beforeEncryption: function() { return true },
+		postVariable: "jCryption",
+		formFieldSelector: ":input"
 	};
 
 	$.fn.jCryption = function(options) {
