@@ -22,10 +22,8 @@
 			$(function() {
 				var hashObj = new jsSHA("mySuperPassword", "ASCII");
 				var password = hashObj.getHash("SHA-512", "HEX");
-				var aesKey;
-				var keys;
+
 				$.jCryption.authenticate(password, "encrypt.php?generateKeypair=true", "encrypt.php?handshake=true", function(AESKey) {
-					aesKey = AESKey;
 					$("#text,#encrypt,#decrypt,#serverChallenge").attr("disabled",false);
 					$("#status").html('<span style="font-size: 16px;">Let\'s Rock!</span>');
 				}, function() {
@@ -33,7 +31,7 @@
 				});
 
 				$("#encrypt").click(function() {
-					var encryptedString = $.jCryption.encrypt($("#text").val(), aesKey);
+					var encryptedString = $.jCryption.encrypt($("#text").val(), password);
 					$("#log").prepend("\n").prepend("----------");
 					$("#log").prepend("\n").prepend("String: " + $("#text").val());
 					$("#log").prepend("\n").prepend("Encrypted: " + encryptedString);
@@ -59,14 +57,14 @@
 							$("#log").prepend("\n").prepend("----------");
 							$("#log").prepend("\n").prepend("Server original: " + response.unencrypted);
 							$("#log").prepend("\n").prepend("Server sent: " + response.encrypted);
-							var decryptedString = $.jCryption.decrypt(response.encrypted, aesKey);
+							var decryptedString = $.jCryption.decrypt(response.encrypted, password);
 							$("#log").prepend("\n").prepend("Decrypted: " + decryptedString);
 						}
 					});
 				});
 				
 				$("#decrypt").click(function() {
-					var decryptedString = $.jCryption.decrypt($("#text").val(), aesKey);
+					var decryptedString = $.jCryption.decrypt($("#text").val(), password);
 					$("#log").prepend("\n").prepend("----------");
 					$("#log").prepend("\n").prepend("Decrypted: " + decryptedString);
 				});
