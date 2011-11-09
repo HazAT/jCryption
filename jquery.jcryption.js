@@ -20,8 +20,7 @@
 
 		base.$el.data("jCryption", base);
 		base.$el.data("salt", null);
-		base.$el.data("seed", null);
-		base.$el.data("authenticated", false);
+		base.$el.data("key", null);
 		
 		base.init = function() {
 			base.options = $.extend({}, $.jCryption.defaultOptions, options);
@@ -47,30 +46,33 @@
 			}
 
 			$submitElement.bind(base.options.submitEvent, function() {
-				if (base.$el.data("authenticated") === false) {
-					base.authenticate(function () {
-						console.log("asd");
-						$(this).attr("disabled", true);
-						if (base.options.beforeEncryption()) {
+				$(this).attr("disabled", true);
+				if (base.options.beforeEncryption()) {
+					base.authenticate(
+						function(AESEncryptionKey) {
 							var toEncrypt = base.$el.serialize();
 							if ($submitElement.is(":submit")) {
 								toEncrypt = toEncrypt + "&" + $submitElement.attr("name") + "=" + $submitElement.val();
 							}
-							$encryptedElement.val($.jCryption.encrypt(toEncrypt, base.getKey()));
-							$(base.$el).find(base.options.formFieldSelector).attr("disabled",true).end().append($encryptedElement).submit();
+							$encryptedElement.val($.jCryption.encrypt(toEncrypt, AESEncryptionKey));
+							$(base.$el).find(base.options.formFieldSelector)
+							.attr("disabled", true).end()
+							.append($encryptedElement).submit();
+						}, 
+						function() {
+						// Authentication with AES Failed ... sending form without protection
 						}
-					});
+					);
 				}
 				return false;
 			});
-
 		};
 		
 		base.init();
 		
 		base.getKey = function() {
-			if (base.$el.data("seed") !== null) {
-				return base.$el.data("seed");
+			if (base.$el.data("key") !== null) {
+				return base.$el.data("key");
 			}
 			// no good salt available
 			var seed = base.$el.data("salt");
@@ -79,33 +81,30 @@
 				seed = Math.floor(Math.random() * Math.random());
 			}
 			var hashObj = new jsSHA(seed.toString(), "ASCII");
-			base.$el.data("seed", hashObj.getHash("SHA-512", "HEX"));
+			base.$el.data("key", hashObj.getHash("SHA-512", "HEX"));
 			return base.getKey();
 		};
 		
-		base.authenticate = function(callback) {
+		base.authenticate = function(success, failure) {
 			var key = base.getKey();
-			$.jCryption.getKeys(base.options.getKeysURL, function(keys) {
-				$.jCryption.encryptKey(key, keys, function(encrypted) {
-					console.log("CHALLENGE?!");
-					var response = $.jCryption.handshake(base.options.handshakeURL, encrypted);
-					if ($.jCryption.challenge(response.challenge, key)) {
-						console.log("ACCPETED");
-						base.$el.data("authenticated", true);
+			$.jCryption.authenticate(key, base.options.getKeysURL, base.options.handshakeURL, success, failure);
+		};
+	};
+
+	$.jCryption.authenticate = function(AESEncryptionKey, publicKeyURL, handshakeURL, success, failure) {
+		$.jCryption.getKeys(publicKeyURL, function(keys) {
+			$.jCryption.encryptKey(AESEncryptionKey, keys, function(encryptedKey) {
+				$.jCryption.handshake(handshakeURL, encryptedKey, function(response) {
+					if ($.jCryption.challenge(response.challenge, AESEncryptionKey)) {
+						success.call(this, AESEncryptionKey);
 					} else {
-						base.$el.data("authenticated", false);
-					}
-					if($.isFunction(callback)) {
-						callback.call(this);
+						failure.call(this);
 					}
 				});
 			});
-		};
-		
+		});
 	};
 	
-	
-
 	$.jCryption.getKeys = function(url, callback) {
 		var jCryptionKeyPair = function(encryptionExponent, modulus, maxdigits) {
 			setMaxDigits(parseInt(maxdigits,10));
@@ -123,24 +122,23 @@
 			}
 		});
 	};
-	
+
 	$.jCryption.decrypt = function(data, key) {
 		return Aes.Ctr.decrypt(data, key , 256);
 	};
-	
+
 	$.jCryption.encrypt = function(data, key) {
 		return Aes.Ctr.encrypt(data, key , 256);
 	};
-	
+
 	$.jCryption.challenge = function(challenge, key) {
-		if ($.jCryption.decrypt(challenge, key) == "accpected") {
+		if ($.jCryption.decrypt(challenge, key) == key) {
 			return true;
 		}
 		return false;
 	};
-	
-	$.jCryption.handshake = function(url, key) {
-		var response;
+
+	$.jCryption.handshake = function(url, key, callback) {
 		$.ajax({
 			url: url,
 			dataType: "json",
@@ -148,12 +146,10 @@
 			data: {
 				key: key
 			},
-			async: false,
-			success: function(json) {
-				response = json;
+			success: function(response) {
+				callback.call(this, response);
 			}
 		});
-		return response;
 	};
 
 	$.jCryption.encryptKey = function(string, keyPair, callback) {

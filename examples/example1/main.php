@@ -5,7 +5,7 @@ $keyLength = 1024;
 $jCryption = new jCryption();
 if(isset($_GET["generateKeypair"])) {
 	require_once("../../100_1024_keys.inc.php");
-	$keys = $arrKeys[mt_rand(0,100)];
+	$keys = $arrKeys[mt_rand(0, 100)];
 	$_SESSION["e"] = array("int" => $keys["e"], "hex" => $jCryption->dec2string($keys["e"],16));
 	$_SESSION["d"] = array("int" => $keys["d"], "hex" => $jCryption->dec2string($keys["d"],16));
 	$_SESSION["n"] = array("int" => $keys["n"], "hex" => $jCryption->dec2string($keys["n"],16));
@@ -17,7 +17,7 @@ if(isset($_GET["generateKeypair"])) {
 	unset($_SESSION["d"]);
 	unset($_SESSION["n"]);
 	$_SESSION["key"] = $key;
-	echo json_encode(array("challenge" => AesCtr::encrypt("accpected", $key, 256)));
+	echo json_encode(array("challenge" => AesCtr::encrypt($key, $key, 256)));
 	exit();
 } else {
 ?>
@@ -39,12 +39,8 @@ html,body {
 
 <p><strong>orignial POST:</strong> <br/><?php print_r($_POST); ?></p>
 <?php
-//$var = $jCryption->decrypt($_POST['jCryption'], $_SESSION["d"]["int"], $_SESSION["n"]["int"]);
 $var = AesCtr::decrypt($_POST['jCryption'], $_SESSION["key"], 256);
-unset($_SESSION["e"]);
-unset($_SESSION["d"]);
-unset($_SESSION["n"]);
-parse_str($var,$result);
+parse_str($var, $result);
 ?>
 
 <p><strong>decrypted POST:</strong> <br/><?php print_r($result); ?></p>
