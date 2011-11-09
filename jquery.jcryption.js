@@ -213,7 +213,6 @@
 		submitElement: false,
 		submitEvent: "click",
 		getKeysURL: "main.php?generateKeypair=true",
-		challengeURL: "main.php?challenge=true",
 		handshakeURL: "main.php?handshake=true",
 		beforeEncryption: function() { return true },
 		postVariable: "jCryption",
