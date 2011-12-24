@@ -71,6 +71,9 @@
 		
 		base.init();
 		
+		/**
+		* Creates a random string(key) for use in the AES algorithm
+		*/
 		base.getKey = function() {
 			if (base.$el.data("key") !== null) {
 				return base.$el.data("key");
@@ -86,12 +89,25 @@
 			return base.getKey();
 		};
 		
+		/**
+		* Authenticate with the server (One way)
+		* @param {function} success The function to call if the operation was successfull
+		* @param {function} failure The function to call if an error has occurred
+		*/
 		base.authenticate = function(success, failure) {
 			var key = base.getKey();
 			$.jCryption.authenticate(key, base.options.getKeysURL, base.options.handshakeURL, success, failure);
 		};
 	};
-
+	
+	/**
+	* Authenticates with the server
+	* @param {string} AESEncryptionKey The AES key
+	* @param {string} publicKeyURL The public key URL
+	* @param {string} handshakeURL The handshake URL
+	* @param {function} success The function to call if the operation was successfull
+	* @param {function} failure The function to call if an error has occurred
+	*/
 	$.jCryption.authenticate = function(AESEncryptionKey, publicKeyURL, handshakeURL, success, failure) {
 		$.jCryption.getKeys(publicKeyURL, function(keys) {
 			$.jCryption.encryptKey(AESEncryptionKey, keys, function(encryptedKey) {
@@ -106,6 +122,11 @@
 		});
 	};
 	
+	/**
+	* Gets the RSA keys from the specified url, and saves it into a RSA keypair
+	* @param {string} url The url to contact
+	* @param {function} callback The function to call when the operation has finshed
+	*/
 	$.jCryption.getKeys = function(url, callback) {
 		var jCryptionKeyPair = function(encryptionExponent, modulus, maxdigits) {
 			setMaxDigits(parseInt(maxdigits,10));
@@ -116,22 +137,44 @@
 			this.barrett = new BarrettMu(this.m);
 		};
 
-		$.getJSON(url, function(data) {
+	/**
+	* Gets the data from the specified url, and converts it into a RSA keypair
+	* @param {string} url The URL to contact
+	* @param {string} data The JSON data
+	*/
+	$.getJSON(url, function(data) {
 			var keys = new jCryptionKeyPair(data.e, data.n, data.maxdigits);
 			if($.isFunction(callback)) {
 				callback.call(this, keys);
 			}
 		});
 	};
-
+	
+	/**
+	* Decrypts data using AES 256
+	* @param {string} data The data to decrypt(Ciphertext)
+	* @param {string} key The AES key
+	* @returns {string} The result of the decryption(Plaintext)
+	*/
 	$.jCryption.decrypt = function(data, key) {
 		return Aes.Ctr.decrypt(data, key , 256);
 	};
-
+	
+	/**
+	* Encrypts data using AES 256
+	* @param {string} data The data to encrypt(Plaintext)
+	* @param {string} key The AES key
+	* @returns {string} The result of the encryption(Ciphertext)
+	*/
 	$.jCryption.encrypt = function(data, key) {
 		return Aes.Ctr.encrypt(data, key , 256);
 	};
-
+	
+	/**
+	* Makes sure that the challenge the client sent, is correct
+	* @param {string} challenge The challenge string
+	* @param {string} key The AES key
+	*/
 	$.jCryption.challenge = function(challenge, key) {
 		if ($.jCryption.decrypt(challenge, key) == key) {
 			return true;
@@ -143,7 +186,7 @@
 	* Executes a handshake with the server
 	* @param {string} url The url to connect to
 	* @param {string} key The encrypted AES key
-	* @param {function} callback The function to call when the handshake is finished
+	* @param {function} callback The function to call when the handshaking has finished
 	*/
 	$.jCryption.handshake = function(url, key, callback) {
 		$.ajax({
@@ -163,7 +206,7 @@
 	* Encrypts the AES key using RSA
 	* @param {string} string The AES key
 	* @param {keypair} keyPair The RSA keypair to use
-	* @param {function} callback The function to call when the encryption is finished
+	* @param {function} callback The function to call when the encryption has finished
 	*/
 	$.jCryption.encryptKey = function(string, keyPair, callback) {
 		var charSum = 0;
