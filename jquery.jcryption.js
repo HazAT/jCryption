@@ -138,7 +138,13 @@
 		}
 		return false;
 	};
-
+	
+	/**
+	* Executes a handshake with the server
+	* @param {string} url The url to connect to
+	* @param {string} key The encrypted AES key
+	* @param {function} callback The function to call when the handshake is finished
+	*/
 	$.jCryption.handshake = function(url, key, callback) {
 		$.ajax({
 			url: url,
@@ -152,7 +158,13 @@
 			}
 		});
 	};
-
+	
+	/**
+	* Encrypts the AES key using RSA
+	* @param {string} string The AES key
+	* @param {keypair} keyPair The RSA keypair to use
+	* @param {function} callback The function to call when the encryption is finished
+	*/
 	$.jCryption.encryptKey = function(string, keyPair, callback) {
 		var charSum = 0;
 		for(var i = 0; i < string.length; i++){
