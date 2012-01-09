@@ -304,7 +304,11 @@ class jCryption {
 		$max = count($blocks);
 		for ($i=0; $i < $max; $i++) {
 			$dec = $this->_hex2bint($blocks[$i]);
-			$dec = bcpowmod($dec, $dec_key, $enc_mod);
+			if (function_exists('gmp_strval') && function_exists('gmp_powm')){
+				$dec = gmp_strval(gmp_powm($dec, $dec_key, $enc_mod));
+			} else {
+				$dec = bcpowmod($dec, $dec_key, $enc_mod);
+			}
 			$ascii = $this->_bint2char($dec);
 			$result .= $ascii;
 		}
