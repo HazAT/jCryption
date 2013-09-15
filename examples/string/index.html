@@ -16,14 +16,16 @@
 			}
 		</style>
 		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>
-		<script type="text/javascript" src="../../jquery.jcryption.js"></script>
+		<!-- // <script type="text/javascript" src="../../jquery.jcryption.js"></script> -->
+		<script type="text/javascript" src="../../jsencrypt.js"></script>
+		<script type="text/javascript" src="../../jquery.jcryption.2.0.js"></script>
 		<script type="text/javascript">
 			var $loader = $('<img src="loading.gif" alt="Loading..." title="Loading..." style="margin-right:15px;" />');
 			$(function() {
-				var hashObj = new jsSHA("mySuperPassword", "ASCII");
-				var password = hashObj.getHash("SHA-512", "HEX");
+				var password = $.jCryption.encrypt("XXXX", "trubo");
+				console.log(password);
 
-				$.jCryption.authenticate(password, "encrypt.php?generateKeypair=true", "encrypt.php?handshake=true", function(AESKey) {
+				$.jCryption.authenticate(password, "encrypt2.php?generateKeypair=true", "encrypt2.php?handshake=true", function(AESKey) {
 					$("#text,#encrypt,#decrypt,#serverChallenge").attr("disabled",false);
 					$("#status").html('<span style="font-size: 16px;">Let\'s Rock!</span>');
 				}, function() {
@@ -36,7 +38,7 @@
 					$("#log").prepend("\n").prepend("String: " + $("#text").val());
 					$("#log").prepend("\n").prepend("Encrypted: " + encryptedString);
 					$.ajax({
-						url: "encrypt.php",
+						url: "encrypt2.php",
 						dataType: "json",
 						type: "POST",
 						data: {
@@ -50,7 +52,7 @@
 
 				$("#serverChallenge").click(function() {
 					$.ajax({
-						url: "encrypt.php?decrypttest=true",
+						url: "encrypt2.php?decrypttest=true",
 						dataType: "json",
 						type: "POST",
 						success: function(response) {
