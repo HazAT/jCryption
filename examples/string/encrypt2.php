@@ -1,13 +1,7 @@
 <?php
 	// Start the session so we can use sessions
 	session_start();
-	// Include the jCryption PHP library
-	require_once("../../jcryption.php");
-	// Set the RSA key length
-	$keyLength = 1024;
-	// Create a new jCryption object
-	$jCryption = new jCryption();
-
+	
 	// If the GET parameter "generateKeypair" is set
 	if(isset($_GET["generateKeypair"])) {
 		$_SESSION["publickey"] = file_get_contents("rsa_4096_pub.pem");
