@@ -27,7 +27,6 @@
 		    fclose($pipes[1]);
 		    proc_close($process);
 		}
-
 		// Save the AES key into the session
 		$_SESSION["key"] = $key;
 		
@@ -87,9 +86,13 @@
 		    fclose($pipes[1]);
 		    proc_close($process);
 		}
-		parse_str($data, $output);
 		
-		echo json_encode($output);
+		if(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+			echo json_encode(array("data" => $data));
+		} else {
+			parse_str($data, $output);
+			print_r($output);
+		}
 	} else {
 		echo json_encode($_POST);
 	}

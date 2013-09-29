@@ -1,5 +1,5 @@
 /*
-* jCryption JavaScript data encryption v2.0
+* jCryption JavaScript data encryption v3.0
 * http://www.jcryption.org/
 *
 * Copyright (c) 2013 Daniel Griesser
@@ -10,227 +10,228 @@
 * visit my homepage or contact me under daniel.griesser@jcryption.org
 */
 (function($) {
-	$.jCryption = function(el, options) {
-		var base = this;
-		
-		base.$el = $(el);
-		base.el = el;
+  $.jCryption = function(el, options) {
+    var base = this;
+    
+    base.$el = $(el);
+    base.el = el;
 
-		base.$el.data("jCryption", base);
-		base.$el.data("salt", null);
-		base.$el.data("key", null);
-		
-		base.init = function() {
-			base.options = $.extend({}, $.jCryption.defaultOptions, options);
+    base.$el.data("jCryption", base);
+    base.$el.data("salt", null);
+    base.$el.data("key", null);
+    
+    base.init = function() {
+      base.options = $.extend({}, $.jCryption.defaultOptions, options);
 
-			// Making a good random salt
-			base.$el.bind('mousemove', function(e) {
-				if (base.$el.data("salt") === null) {
-					base.$el.data("salt", (e.pageX + e.pageY) * Math.random());
-				} else {
-					base.$el.unbind('mousemove');
-				}
-			});
-			
-			$encryptedElement = $("<input />",{
-				type:'hidden',
-				name:base.options.postVariable
-			});
+      // Making a good random salt
+      base.$el.bind('mousemove', function(e) {
+        if (base.$el.data("salt") === null) {
+          base.$el.data("salt", (e.pageX + e.pageY) * Math.random() + "");
+        } else {
+          base.$el.unbind('mousemove');
+        }
+      });
+      
+      $encryptedElement = $("<input />",{
+        type:'hidden',
+        name:base.options.postVariable
+      });
 
-			if (base.options.submitElement !== false) {
-				var $submitElement = base.options.submitElement;
-			} else {
-				var $submitElement = base.$el.find(":input:submit");
-			}
+      if (base.options.submitElement !== false) {
+        var $submitElement = base.options.submitElement;
+      } else {
+        var $submitElement = base.$el.find(":input:submit");
+      }
 
-			$submitElement.bind(base.options.submitEvent, function() {
-				$(this).attr("disabled", true);
-				if (base.options.beforeEncryption()) {
-					base.authenticate(
-						function(AESEncryptionKey) {
-							var toEncrypt = base.$el.serialize();
-							if ($submitElement.is(":submit")) {
-								toEncrypt = toEncrypt + "&" + $submitElement.attr("name") + "=" + $submitElement.val();
-							}
-							$encryptedElement.val($.jCryption.encrypt(toEncrypt, AESEncryptionKey));
-							$(base.$el).find(base.options.formFieldSelector)
-							.attr("disabled", true).end()
-							.append($encryptedElement).submit();
-						}, 
-						function() {
-							// Authentication with AES Failed ... sending form without protection
-							$(base.$el).submit();
-						}
-					);
-				}
-				return false;
-			});
-		};
-		
-		base.init();
-		
-		/**
-		* Creates a random string(key) for use in the AES algorithm
-		*/
-		base.getKey = function() {
-			if (base.$el.data("key") !== null) {
-				return base.$el.data("key");
-			}
-			// no good salt available
-			var seed = base.$el.data("salt");
-			if (seed === null) {
-				// generating weak seed
-				seed = Math.random();
-			}
-			var salt = CryptoJS.lib.WordArray.random(128/8);
-    		var key128Bits = CryptoJS.PBKDF2(seed, salt, { keySize: 128/32 });
-			base.$el.data("key", CryptoJS.SHA512(key128Bits));
-			return base.getKey();
-		};
-		
-		/**
-		* Authenticate with the server (One way)
-		* @param {function} success The function to call if the operation was successfull
-		* @param {function} failure The function to call if an error has occurred
-		*/
-		base.authenticate = function(success, failure) {
-			var key = base.getKey();
-			$.jCryption.authenticate(key, base.options.getKeysURL, base.options.handshakeURL, success, failure);
-		};
-	};
-	
-	/**
-	* Authenticates with the server
-	* @param {string} AESEncryptionKey The AES key
-	* @param {string} publicKeyURL The public key URL
-	* @param {string} handshakeURL The handshake URL
-	* @param {function} success The function to call if the operation was successfull
-	* @param {function} failure The function to call if an error has occurred
-	*/
-	$.jCryption.authenticate = function(AESEncryptionKey, publicKeyURL, handshakeURL, success, failure) {
-		$.jCryption.getPublicKey(publicKeyURL, function() {
-			$.jCryption.encryptKey(AESEncryptionKey, function(encryptedKey) {
-				$.jCryption.handshake(handshakeURL, encryptedKey, function(response) {
-					if ($.jCryption.challenge(response.challenge, AESEncryptionKey)) {
-						success.call(this, AESEncryptionKey);
-					} else {
-						failure.call(this);
-					}
-				});
-			});
-		});
-	};
-	
-	/**
-	* Gets the RSA keys from the specified url, and saves it into a RSA keypair
-	* @param {string} url The url to contact
-	* @param {function} callback The function to call when the operation has finshed
-	*/
-	$.jCryption.getPublicKey = function(url, callback) {
-		$.getJSON(url, function(data) {
-			$.jCryption.crypt.setKey(data.publickey);
-			if($.isFunction(callback)) {
-				callback.call(this);
-			}
-		});
-	};
-	
-	/**
-	* Decrypts data using AES 256
-	* @param {string} data The data to decrypt(Ciphertext)
-	* @param {string} secret The AES secret
-	* @returns {string} The result of the decryption(Plaintext)
-	*/
-	$.jCryption.decrypt = function(data, secret) {
-		return $.jCryption.hex2string(CryptoJS.AES.decrypt(data, secret) + "");
-	};
-	
-	/**
-	* Encrypts data using AES 256
-	* @param {string} data The data to encrypt(Plaintext)
-	* @param {string} secret The AES secret
-	* @returns {string} The result of the encryption(Ciphertext)
-	*/
-	$.jCryption.encrypt = function(data, secret) {
-		return CryptoJS.AES.encrypt(data, secret) + "";
-	};
-	
-	/**
-	* Makes sure that the challenge the client sent, is correct
-	* @param {string} challenge The challenge string
-	* @param {string} secret The AES secret
-	*/
-	$.jCryption.challenge = function(challenge, secret) {
-		var decrypt = $.jCryption.decrypt(challenge, secret);
-		if ($.jCryption.decrypt(challenge, secret) == secret) {
-			return true;
-		}
-		return false;
-	};
-	
-	
-	/**
-	* Converts a hex into a string
-	* @param {hex} string representing a hex number
-	* @returns {string} ASCII sting of input hex
-	*/
-	$.jCryption.hex2string = function(hex) {
-		var str = '';
-		for (var i = 0; i < hex.length; i += 2) {
-			str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-		}
-		return str;
-	};
+      $submitElement.bind(base.options.submitEvent, function() {
+        $(this).attr("disabled", true);
+        if (base.options.beforeEncryption()) {
+          base.authenticate(
+            function(AESEncryptionKey) {
+              var toEncrypt = base.$el.serialize();
+              if ($submitElement.is(":submit")) {
+                toEncrypt = toEncrypt + "&" + $submitElement.attr("name") + "=" + $submitElement.val();
+              }
+              $encryptedElement.val($.jCryption.encrypt(toEncrypt, AESEncryptionKey));
+              $(base.$el).find(base.options.formFieldSelector)
+              .attr("disabled", true).end()
+              .append($encryptedElement).submit();
+            }, 
+            function() {
+              // Authentication with AES Failed ... sending form without protection
+              $(base.$el).submit();
+            }
+          );
+        }
+        return false;
+      });
+    };
+    
+    base.init();
+    
+    /**
+    * Creates a random string(key) for use in the AES algorithm
+    */
+    base.getKey = function() {
+      if (base.$el.data("key") !== null) {
+        return base.$el.data("key");
+      }
+      // no good salt available
+      var seed = base.$el.data("salt");
+      if (seed === null) {
+        // generating weak seed
+        seed = Math.random();
+      }
+      var salt = CryptoJS.lib.WordArray.random(128/8);
+      var key128Bits = CryptoJS.PBKDF2(seed, salt, { keySize: 128/32 });
+      console.log(CryptoJS.SHA1(key128Bits).toString());
+      base.$el.data("key", CryptoJS.SHA1(key128Bits).toString());
+      return base.getKey();
+    };
+    
+    /**
+    * Authenticate with the server (One way)
+    * @param {function} success The function to call if the operation was successfull
+    * @param {function} failure The function to call if an error has occurred
+    */
+    base.authenticate = function(success, failure) {
+      var key = base.getKey();
+      $.jCryption.authenticate(key, base.options.getKeysURL, base.options.handshakeURL, success, failure);
+    };
+  };
+  
+  /**
+  * Authenticates with the server
+  * @param {string} AESEncryptionKey The AES key
+  * @param {string} publicKeyURL The public key URL
+  * @param {string} handshakeURL The handshake URL
+  * @param {function} success The function to call if the operation was successfull
+  * @param {function} failure The function to call if an error has occurred
+  */
+  $.jCryption.authenticate = function(AESEncryptionKey, publicKeyURL, handshakeURL, success, failure) {
+    $.jCryption.getPublicKey(publicKeyURL, function() {
+      $.jCryption.encryptKey(AESEncryptionKey, function(encryptedKey) {
+        $.jCryption.handshake(handshakeURL, encryptedKey, function(response) {
+          if ($.jCryption.challenge(response.challenge, AESEncryptionKey)) {
+            success.call(this, AESEncryptionKey);
+          } else {
+            failure.call(this);
+          }
+        });
+      });
+    });
+  };
+  
+  /**
+  * Gets the RSA keys from the specified url, and saves it into a RSA keypair
+  * @param {string} url The url to contact
+  * @param {function} callback The function to call when the operation has finshed
+  */
+  $.jCryption.getPublicKey = function(url, callback) {
+    $.getJSON(url, function(data) {
+      $.jCryption.crypt.setKey(data.publickey);
+      if($.isFunction(callback)) {
+        callback.call(this);
+      }
+    });
+  };
+  
+  /**
+  * Decrypts data using AES 256
+  * @param {string} data The data to decrypt(Ciphertext)
+  * @param {string} secret The AES secret
+  * @returns {string} The result of the decryption(Plaintext)
+  */
+  $.jCryption.decrypt = function(data, secret) {
+    return $.jCryption.hex2string(CryptoJS.AES.decrypt(data, secret) + "");
+  };
+  
+  /**
+  * Encrypts data using AES 256
+  * @param {string} data The data to encrypt(Plaintext)
+  * @param {string} secret The AES secret
+  * @returns {string} The result of the encryption(Ciphertext)
+  */
+  $.jCryption.encrypt = function(data, secret) {
+    return CryptoJS.AES.encrypt(data, secret) + "";
+  };
+  
+  /**
+  * Makes sure that the challenge the client sent, is correct
+  * @param {string} challenge The challenge string
+  * @param {string} secret The AES secret
+  */
+  $.jCryption.challenge = function(challenge, secret) {
+    var decrypt = $.jCryption.decrypt(challenge, secret);
+    if ($.jCryption.decrypt(challenge, secret) == secret) {
+      return true;
+    }
+    return false;
+  };
+  
+  
+  /**
+  * Converts a hex into a string
+  * @param {hex} string representing a hex number
+  * @returns {string} ASCII sting of input hex
+  */
+  $.jCryption.hex2string = function(hex) {
+    var str = '';
+    for (var i = 0; i < hex.length; i += 2) {
+      str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    return str;
+  };
 
-	/**
-	* Executes a handshake with the server
-	* @param {string} url The url to connect to
-	* @param {string} ecrypted The encrypted AES secret
-	* @param {function} callback The function to call when the handshaking has finished
-	*/
-	$.jCryption.handshake = function(url, ecrypted, callback) {
-		$.ajax({
-			url: url,
-			dataType: "json",
-			type: "POST",
-			data: {
-				key: ecrypted
-			},
-			success: function(response) {
-				callback.call(this, response);
-			}
-		});
-	};
-	
-	/**
-	* Encrypts the AES secret using RSA
-	* @param {string} secret The AES secret
-	* @param {function} callback The function to call when the encryption has finished
-	*/
-	$.jCryption.encryptKey = function(secret, callback) {
-		var encryptedString = $.jCryption.crypt.encrypt(secret);
-		if($.isFunction(callback)) {
-			callback(encryptedString);
-		} else {
-			return encryptedString;
-		}
-	};
-	
-	$.jCryption.defaultOptions = {
-		submitElement: false,
-		submitEvent: "click",
-		getKeysURL: "main.php?generateKeypair=true",
-		handshakeURL: "main.php?handshake=true",
-		beforeEncryption: function() { return true },
-		postVariable: "jCryption",
-		formFieldSelector: ":input"
-	};
+  /**
+  * Executes a handshake with the server
+  * @param {string} url The url to connect to
+  * @param {string} ecrypted The encrypted AES secret
+  * @param {function} callback The function to call when the handshaking has finished
+  */
+  $.jCryption.handshake = function(url, ecrypted, callback) {
+    $.ajax({
+      url: url,
+      dataType: "json",
+      type: "POST",
+      data: {
+        key: ecrypted
+      },
+      success: function(response) {
+        callback.call(this, response);
+      }
+    });
+  };
+  
+  /**
+  * Encrypts the AES secret using RSA
+  * @param {string} secret The AES secret
+  * @param {function} callback The function to call when the encryption has finished
+  */
+  $.jCryption.encryptKey = function(secret, callback) {
+    var encryptedString = $.jCryption.crypt.encrypt(secret);
+    if($.isFunction(callback)) {
+      callback(encryptedString);
+    } else {
+      return encryptedString;
+    }
+  };
+  
+  $.jCryption.defaultOptions = {
+    submitElement: false,
+    submitEvent: "click",
+    getKeysURL: "jcryption.php?getPublicKey=true",
+    handshakeURL: "jcryption.php?handshake=true",
+    beforeEncryption: function() { return true },
+    postVariable: "jCryption",
+    formFieldSelector: ":input"
+  };
 
-	$.fn.jCryption = function(options) {
-		return this.each(function(){
-			(new $.jCryption(this, options));
-		});
-	};
+  $.fn.jCryption = function(options) {
+    return this.each(function(){
+      (new $.jCryption(this, options));
+    });
+  };
 
 })(jQuery);
 
@@ -600,7 +601,7 @@ function bnpDivRemTo(m,q,r) {
   }
   if(r == null) r = nbi();
   var y = nbi(), ts = this.s, ms = m.s;
-  var nsh = this.DB-nbits(pm[pm.t-1]);	// normalize modulus
+  var nsh = this.DB-nbits(pm[pm.t-1]);  // normalize modulus
   if(nsh > 0) { pm.lShiftTo(nsh,y); pt.lShiftTo(nsh,r); }
   else { pm.copyTo(y); pt.copyTo(r); }
   var ys = y.t;
@@ -615,12 +616,12 @@ function bnpDivRemTo(m,q,r) {
     r.subTo(t,r);
   }
   BigInteger.ONE.dlShiftTo(ys,t);
-  t.subTo(y,y);	// "negative" y so we can replace sub with am later
+  t.subTo(y,y); // "negative" y so we can replace sub with am later
   while(y.t < ys) y[y.t++] = 0;
   while(--j >= 0) {
     // Estimate quotient digit
     var qd = (r[--i]==y0)?this.DM:Math.floor(r[i]*d1+(r[i-1]+e)*d2);
-    if((r[i]+=y.am(0,qd,r,j,0,ys)) < qd) {	// Try it out
+    if((r[i]+=y.am(0,qd,r,j,0,ys)) < qd) {  // Try it out
       y.dlShiftTo(j,t);
       r.subTo(t,r);
       while(r[i] < --qd) r.subTo(t,r);
@@ -632,7 +633,7 @@ function bnpDivRemTo(m,q,r) {
   }
   r.t = ys;
   r.clamp();
-  if(nsh > 0) r.rShiftTo(nsh,r);	// Denormalize remainder
+  if(nsh > 0) r.rShiftTo(nsh,r);  // Denormalize remainder
   if(ts < 0) BigInteger.ZERO.subTo(r,r);
 }
 
@@ -675,13 +676,13 @@ function bnpInvDigit() {
   if(this.t < 1) return 0;
   var x = this[0];
   if((x&1) == 0) return 0;
-  var y = x&3;		// y == 1/x mod 2^2
-  y = (y*(2-(x&0xf)*y))&0xf;	// y == 1/x mod 2^4
-  y = (y*(2-(x&0xff)*y))&0xff;	// y == 1/x mod 2^8
-  y = (y*(2-(((x&0xffff)*y)&0xffff)))&0xffff;	// y == 1/x mod 2^16
+  var y = x&3;    // y == 1/x mod 2^2
+  y = (y*(2-(x&0xf)*y))&0xf;  // y == 1/x mod 2^4
+  y = (y*(2-(x&0xff)*y))&0xff;  // y == 1/x mod 2^8
+  y = (y*(2-(((x&0xffff)*y)&0xffff)))&0xffff; // y == 1/x mod 2^16
   // last step - calculate inverse mod DV directly;
   // assumes 16 < DB <= 32 and assumes ability to handle 48-bit ints
-  y = (y*(2-x*y%this.DV))%this.DV;		// y == 1/x mod 2^dbits
+  y = (y*(2-x*y%this.DV))%this.DV;    // y == 1/x mod 2^dbits
   // we really want the negative inverse, and -DV < y < DV
   return (y>0)?this.DV-y:-y;
 }
@@ -715,7 +716,7 @@ function montRevert(x) {
 
 // x = x/R mod m (HAC 14.32)
 function montReduce(x) {
-  while(x.t <= this.mt2)	// pad x so am has enough room later
+  while(x.t <= this.mt2)  // pad x so am has enough room later
     x[x.t++] = 0;
   for(var i = 0; i < this.m.t; ++i) {
     // faster way of calculating u0 = x[i]*mp mod DV
@@ -885,7 +886,7 @@ function bnpFromNumber(a,b,c) {
     if(a < 2) this.fromInt(1);
     else {
       this.fromNumber(a,c);
-      if(!this.testBit(a-1))	// force MSB set
+      if(!this.testBit(a-1))  // force MSB set
         this.bitwiseTo(BigInteger.ONE.shiftLeft(a-1),op_or,this);
       if(this.isEven()) this.dAddOffset(1,0); // force odd
       while(!this.isProbablePrime(b)) {
@@ -1246,7 +1247,7 @@ function bnModPow(e,m) {
     n = k;
     while((w&1) == 0) { w >>= 1; --n; }
     if((i -= n) < 0) { i += this.DB; --j; }
-    if(is1) {	// ret == 1, don't bother squaring or multiplying it
+    if(is1) { // ret == 1, don't bother squaring or multiplying it
       g[w].copyTo(r);
       is1 = false;
     }
@@ -2298,39 +2299,39 @@ if (typeof KJUR.asn1 == "undefined" || !KJUR.asn1) KJUR.asn1 = {};
  */
 KJUR.asn1.ASN1Util = new function() {
     this.integerToByteHex = function(i) {
-	var h = i.toString(16);
-	if ((h.length % 2) == 1) h = '0' + h;
-	return h;
+  var h = i.toString(16);
+  if ((h.length % 2) == 1) h = '0' + h;
+  return h;
     };
     this.bigIntToMinTwosComplementsHex = function(bigIntegerValue) {
-	var h = bigIntegerValue.toString(16);
-	if (h.substr(0, 1) != '-') {
-	    if (h.length % 2 == 1) {
-		h = '0' + h;
-	    } else {
-		if (! h.match(/^[0-7]/)) {
-		    h = '00' + h;
-		}
-	    }
-	} else {
-	    var hPos = h.substr(1);
-	    var xorLen = hPos.length;
-	    if (xorLen % 2 == 1) {
-		xorLen += 1;
-	    } else {
-		if (! h.match(/^[0-7]/)) {
-		    xorLen += 2;
-		}
-	    }
-	    var hMask = '';
-	    for (var i = 0; i < xorLen; i++) {
-		hMask += 'f';
-	    }
-	    var biMask = new BigInteger(hMask, 16);
-	    var biNeg = biMask.xor(bigIntegerValue).add(BigInteger.ONE);
-	    h = biNeg.toString(16).replace(/^-/, '');
-	}
-	return h;
+  var h = bigIntegerValue.toString(16);
+  if (h.substr(0, 1) != '-') {
+      if (h.length % 2 == 1) {
+    h = '0' + h;
+      } else {
+    if (! h.match(/^[0-7]/)) {
+        h = '00' + h;
+    }
+      }
+  } else {
+      var hPos = h.substr(1);
+      var xorLen = hPos.length;
+      if (xorLen % 2 == 1) {
+    xorLen += 1;
+      } else {
+    if (! h.match(/^[0-7]/)) {
+        xorLen += 2;
+    }
+      }
+      var hMask = '';
+      for (var i = 0; i < xorLen; i++) {
+    hMask += 'f';
+      }
+      var biMask = new BigInteger(hMask, 16);
+      var biNeg = biMask.xor(bigIntegerValue).add(BigInteger.ONE);
+      h = biNeg.toString(16).replace(/^-/, '');
+  }
+  return h;
     };
     /**
      * get PEM string from hexadecimal data and header string
@@ -2349,11 +2350,11 @@ KJUR.asn1.ASN1Util = new function() {
      * -----END PRIVATE KEY-----
      */
     this.getPEMStringFromHex = function(dataHex, pemHeader) {
-	var dataWA = CryptoJS.enc.Hex.parse(dataHex);
-	var dataB64 = CryptoJS.enc.Base64.stringify(dataWA);
-	var pemBody = dataB64.replace(/(.{64})/g, "$1\r\n");
+  var dataWA = CryptoJS.enc.Hex.parse(dataHex);
+  var dataB64 = CryptoJS.enc.Base64.stringify(dataWA);
+  var pemBody = dataB64.replace(/(.{64})/g, "$1\r\n");
         pemBody = pemBody.replace(/\r\n$/, '');
-	return "-----BEGIN " + pemHeader + "-----\r\n" + 
+  return "-----BEGIN " + pemHeader + "-----\r\n" + 
                pemBody + 
                "\r\n-----END " + pemHeader + "-----\r\n";
     };
@@ -2391,27 +2392,27 @@ KJUR.asn1.ASN1Object = function() {
      * @return {String} hexadecimal string of ASN.1 TLV length(L)
      */
     this.getLengthHexFromValue = function() {
-	if (typeof this.hV == "undefined" || this.hV == null) {
-	    throw "this.hV is null or undefined.";
-	}
-	if (this.hV.length % 2 == 1) {
-	    throw "value hex must be even length: n=" + hV.length + ",v=" + this.hV;
-	}
-	var n = this.hV.length / 2;
-	var hN = n.toString(16);
-	if (hN.length % 2 == 1) {
-	    hN = "0" + hN;
-	}
-	if (n < 128) {
-	    return hN;
-	} else {
-	    var hNlen = hN.length / 2;
-	    if (hNlen > 15) {
-		throw "ASN.1 length too long to represent by 8x: n = " + n.toString(16);
-	    }
-	    var head = 128 + hNlen;
-	    return head.toString(16) + hN;
-	}
+  if (typeof this.hV == "undefined" || this.hV == null) {
+      throw "this.hV is null or undefined.";
+  }
+  if (this.hV.length % 2 == 1) {
+      throw "value hex must be even length: n=" + hV.length + ",v=" + this.hV;
+  }
+  var n = this.hV.length / 2;
+  var hN = n.toString(16);
+  if (hN.length % 2 == 1) {
+      hN = "0" + hN;
+  }
+  if (n < 128) {
+      return hN;
+  } else {
+      var hNlen = hN.length / 2;
+      if (hNlen > 15) {
+    throw "ASN.1 length too long to represent by 8x: n = " + n.toString(16);
+      }
+      var head = 128 + hNlen;
+      return head.toString(16) + hN;
+  }
     };
 
     /**
@@ -2422,14 +2423,14 @@ KJUR.asn1.ASN1Object = function() {
      * @return {String} hexadecimal string of ASN.1 TLV
      */
     this.getEncodedHex = function() {
-	if (this.hTLV == null || this.isModified) {
-	    this.hV = this.getFreshValueHex();
-	    this.hL = this.getLengthHexFromValue();
-	    this.hTLV = this.hT + this.hL + this.hV;
-	    this.isModified = false;
-	    //console.error("first time: " + this.hTLV);
-	}
-	return this.hTLV;
+  if (this.hTLV == null || this.isModified) {
+      this.hV = this.getFreshValueHex();
+      this.hL = this.getLengthHexFromValue();
+      this.hTLV = this.hT + this.hL + this.hV;
+      this.isModified = false;
+      //console.error("first time: " + this.hTLV);
+  }
+  return this.hTLV;
     };
 
     /**
@@ -2440,12 +2441,12 @@ KJUR.asn1.ASN1Object = function() {
      * @return {String} hexadecimal string of ASN.1 TLV value(V) bytes
      */
     this.getValueHex = function() {
-	this.getEncodedHex();
-	return this.hV;
+  this.getEncodedHex();
+  return this.hV;
     }
 
     this.getFreshValueHex = function() {
-	return '';
+  return '';
     };
 };
 
@@ -2480,7 +2481,7 @@ KJUR.asn1.DERAbstractString = function(params) {
      * @return {String} string value of this string object
      */
     this.getString = function() {
-	return this.s;
+  return this.s;
     };
 
     /**
@@ -2491,10 +2492,10 @@ KJUR.asn1.DERAbstractString = function(params) {
      * @param {String} newS value by a string to set
      */
     this.setString = function(newS) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.s = newS;
-	this.hV = stohex(this.s);
+  this.hTLV = null;
+  this.isModified = true;
+  this.s = newS;
+  this.hV = stohex(this.s);
     };
 
     /**
@@ -2505,22 +2506,22 @@ KJUR.asn1.DERAbstractString = function(params) {
      * @param {String} newHexString value by a hexadecimal string to set
      */
     this.setStringHex = function(newHexString) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.s = null;
-	this.hV = newHexString;
+  this.hTLV = null;
+  this.isModified = true;
+  this.s = null;
+  this.hV = newHexString;
     };
 
     this.getFreshValueHex = function() {
-	return this.hV;
+  return this.hV;
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['str'] != "undefined") {
-	    this.setString(params['str']);
-	} else if (typeof params['hex'] != "undefined") {
-	    this.setStringHex(params['hex']);
-	}
+  if (typeof params['str'] != "undefined") {
+      this.setString(params['str']);
+  } else if (typeof params['hex'] != "undefined") {
+      this.setStringHex(params['hex']);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERAbstractString, KJUR.asn1.ASN1Object);
@@ -2543,27 +2544,27 @@ KJUR.asn1.DERAbstractTime = function(params) {
 
     // --- PRIVATE METHODS --------------------
     this.localDateToUTC = function(d) {
-	utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-	var utcDate = new Date(utc);
-	return utcDate;
+  utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+  var utcDate = new Date(utc);
+  return utcDate;
     };
 
     this.formatDate = function(dateObject, type) {
-	var pad = this.zeroPadding;
-	var d = this.localDateToUTC(dateObject);
-	var year = String(d.getFullYear());
-	if (type == 'utc') year = year.substr(2, 2);
-	var month = pad(String(d.getMonth() + 1), 2);
-	var day = pad(String(d.getDate()), 2);
-	var hour = pad(String(d.getHours()), 2);
-	var min = pad(String(d.getMinutes()), 2);
-	var sec = pad(String(d.getSeconds()), 2);
-	return year + month + day + hour + min + sec + 'Z';
+  var pad = this.zeroPadding;
+  var d = this.localDateToUTC(dateObject);
+  var year = String(d.getFullYear());
+  if (type == 'utc') year = year.substr(2, 2);
+  var month = pad(String(d.getMonth() + 1), 2);
+  var day = pad(String(d.getDate()), 2);
+  var hour = pad(String(d.getHours()), 2);
+  var min = pad(String(d.getMinutes()), 2);
+  var sec = pad(String(d.getSeconds()), 2);
+  return year + month + day + hour + min + sec + 'Z';
     };
 
     this.zeroPadding = function(s, len) {
-	if (s.length >= len) return s;
-	return new Array(len - s.length + 1).join('0') + s;
+  if (s.length >= len) return s;
+  return new Array(len - s.length + 1).join('0') + s;
     };
 
     // --- PUBLIC METHODS --------------------
@@ -2575,7 +2576,7 @@ KJUR.asn1.DERAbstractTime = function(params) {
      * @return {String} string value of this time object
      */
     this.getString = function() {
-	return this.s;
+  return this.s;
     };
 
     /**
@@ -2586,10 +2587,10 @@ KJUR.asn1.DERAbstractTime = function(params) {
      * @param {String} newS value by a string to set such like "130430235959Z"
      */
     this.setString = function(newS) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.s = newS;
-	this.hV = stohex(this.s);
+  this.hTLV = null;
+  this.isModified = true;
+  this.s = newS;
+  this.hV = stohex(this.s);
     };
 
     /**
@@ -2605,12 +2606,12 @@ KJUR.asn1.DERAbstractTime = function(params) {
      * @param {Integer} sec seconds of date
      */
     this.setByDateValue = function(year, month, day, hour, min, sec) {
-	var dateObject = new Date(Date.UTC(year, month - 1, day, hour, min, sec, 0));
-	this.setByDate(dateObject);
+  var dateObject = new Date(Date.UTC(year, month - 1, day, hour, min, sec, 0));
+  this.setByDate(dateObject);
     };
 
     this.getFreshValueHex = function() {
-	return this.hV;
+  return this.hV;
     };
 };
 JSX.extend(KJUR.asn1.DERAbstractTime, KJUR.asn1.ASN1Object);
@@ -2638,9 +2639,9 @@ KJUR.asn1.DERAbstractStructured = function(params) {
      * @param {array} asn1ObjectArray array of ASN1Object to set
      */
     this.setByASN1ObjectArray = function(asn1ObjectArray) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.asn1Array = asn1ObjectArray;
+  this.hTLV = null;
+  this.isModified = true;
+  this.asn1Array = asn1ObjectArray;
     };
 
     /**
@@ -2651,16 +2652,16 @@ KJUR.asn1.DERAbstractStructured = function(params) {
      * @param {ASN1Object} asn1Object to add
      */
     this.appendASN1Object = function(asn1Object) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.asn1Array.push(asn1Object);
+  this.hTLV = null;
+  this.isModified = true;
+  this.asn1Array.push(asn1Object);
     };
 
     this.asn1Array = new Array();
     if (typeof params != "undefined") {
-	if (typeof params['array'] != "undefined") {
-	    this.asn1Array = params['array'];
-	}
+  if (typeof params['array'] != "undefined") {
+      this.asn1Array = params['array'];
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERAbstractStructured, KJUR.asn1.ASN1Object);
@@ -2715,9 +2716,9 @@ KJUR.asn1.DERInteger = function(params) {
      * @param {BigInteger} bigIntegerValue to set
      */
     this.setByBigInteger = function(bigIntegerValue) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.hV = KJUR.asn1.ASN1Util.bigIntToMinTwosComplementsHex(bigIntegerValue);
+  this.hTLV = null;
+  this.isModified = true;
+  this.hV = KJUR.asn1.ASN1Util.bigIntToMinTwosComplementsHex(bigIntegerValue);
     };
 
     /**
@@ -2728,8 +2729,8 @@ KJUR.asn1.DERInteger = function(params) {
      * @param {Integer} integer value to set
      */
     this.setByInteger = function(intValue) {
-	var bi = new BigInteger(String(intValue), 10);
-	this.setByBigInteger(bi);
+  var bi = new BigInteger(String(intValue), 10);
+  this.setByBigInteger(bi);
     };
 
     /**
@@ -2744,21 +2745,21 @@ KJUR.asn1.DERInteger = function(params) {
      * two's complement representation.
      */
     this.setValueHex = function(newHexString) {
-	this.hV = newHexString;
+  this.hV = newHexString;
     };
 
     this.getFreshValueHex = function() {
-	return this.hV;
+  return this.hV;
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['bigint'] != "undefined") {
-	    this.setByBigInteger(params['bigint']);
-	} else if (typeof params['int'] != "undefined") {
-	    this.setByInteger(params['int']);
-	} else if (typeof params['hex'] != "undefined") {
-	    this.setValueHex(params['hex']);
-	}
+  if (typeof params['bigint'] != "undefined") {
+      this.setByBigInteger(params['bigint']);
+  } else if (typeof params['int'] != "undefined") {
+      this.setByInteger(params['int']);
+  } else if (typeof params['hex'] != "undefined") {
+      this.setValueHex(params['hex']);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERInteger, KJUR.asn1.ASN1Object);
@@ -2792,9 +2793,9 @@ KJUR.asn1.DERBitString = function(params) {
      * @param {String} newHexStringIncludingUnusedBits
      */
     this.setHexValueIncludingUnusedBits = function(newHexStringIncludingUnusedBits) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.hV = newHexStringIncludingUnusedBits;
+  this.hTLV = null;
+  this.isModified = true;
+  this.hV = newHexStringIncludingUnusedBits;
     };
 
     /**
@@ -2806,13 +2807,13 @@ KJUR.asn1.DERBitString = function(params) {
      * @param {String} hValue
      */
     this.setUnusedBitsAndHexValue = function(unusedBits, hValue) {
-	if (unusedBits < 0 || 7 < unusedBits) {
-	    throw "unused bits shall be from 0 to 7: u = " + unusedBits;
-	}
-	var hUnusedBits = "0" + unusedBits;
-	this.hTLV = null;
-	this.isModified = true;
-	this.hV = hUnusedBits + hValue;
+  if (unusedBits < 0 || 7 < unusedBits) {
+      throw "unused bits shall be from 0 to 7: u = " + unusedBits;
+  }
+  var hUnusedBits = "0" + unusedBits;
+  this.hTLV = null;
+  this.isModified = true;
+  this.hV = hUnusedBits + hValue;
     };
 
     /**
@@ -2827,22 +2828,22 @@ KJUR.asn1.DERBitString = function(params) {
      * NOTE: Trailing zeros '0' will be ignored.
      */
     this.setByBinaryString = function(binaryString) {
-	binaryString = binaryString.replace(/0+$/, '');
-	var unusedBits = 8 - binaryString.length % 8;
-	if (unusedBits == 8) unusedBits = 0;
-	for (var i = 0; i <= unusedBits; i++) {
-	    binaryString += '0';
-	}
-	var h = '';
-	for (var i = 0; i < binaryString.length - 1; i += 8) {
-	    var b = binaryString.substr(i, 8);
-	    var x = parseInt(b, 2).toString(16);
-	    if (x.length == 1) x = '0' + x;
-	    h += x;  
-	}
-	this.hTLV = null;
-	this.isModified = true;
-	this.hV = '0' + unusedBits + h;
+  binaryString = binaryString.replace(/0+$/, '');
+  var unusedBits = 8 - binaryString.length % 8;
+  if (unusedBits == 8) unusedBits = 0;
+  for (var i = 0; i <= unusedBits; i++) {
+      binaryString += '0';
+  }
+  var h = '';
+  for (var i = 0; i < binaryString.length - 1; i += 8) {
+      var b = binaryString.substr(i, 8);
+      var x = parseInt(b, 2).toString(16);
+      if (x.length == 1) x = '0' + x;
+      h += x;  
+  }
+  this.hTLV = null;
+  this.isModified = true;
+  this.hV = '0' + unusedBits + h;
     };
 
     /**
@@ -2855,15 +2856,15 @@ KJUR.asn1.DERBitString = function(params) {
      * NOTE: Trailing falses will be ignored.
      */
     this.setByBooleanArray = function(booleanArray) {
-	var s = '';
-	for (var i = 0; i < booleanArray.length; i++) {
-	    if (booleanArray[i] == true) {
-		s += '1';
-	    } else {
-		s += '0';
-	    }
-	}
-	this.setByBinaryString(s);
+  var s = '';
+  for (var i = 0; i < booleanArray.length; i++) {
+      if (booleanArray[i] == true) {
+    s += '1';
+      } else {
+    s += '0';
+      }
+  }
+  this.setByBinaryString(s);
     };
 
     /**
@@ -2877,25 +2878,25 @@ KJUR.asn1.DERBitString = function(params) {
      * This static method may be useful to initialize boolean array.
      */
     this.newFalseArray = function(nLength) {
-	var a = new Array(nLength);
-	for (var i = 0; i < nLength; i++) {
-	    a[i] = false;
-	}
-	return a;
+  var a = new Array(nLength);
+  for (var i = 0; i < nLength; i++) {
+      a[i] = false;
+  }
+  return a;
     };
 
     this.getFreshValueHex = function() {
-	return this.hV;
+  return this.hV;
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['hex'] != "undefined") {
-	    this.setHexValueIncludingUnusedBits(params['hex']);
-	} else if (typeof params['bin'] != "undefined") {
-	    this.setByBinaryString(params['bin']);
-	} else if (typeof params['array'] != "undefined") {
-	    this.setByBooleanArray(params['array']);
-	}
+  if (typeof params['hex'] != "undefined") {
+      this.setHexValueIncludingUnusedBits(params['hex']);
+  } else if (typeof params['bin'] != "undefined") {
+      this.setByBinaryString(params['bin']);
+  } else if (typeof params['array'] != "undefined") {
+      this.setByBooleanArray(params['array']);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERBitString, KJUR.asn1.ASN1Object);
@@ -2951,25 +2952,25 @@ JSX.extend(KJUR.asn1.DERNull, KJUR.asn1.ASN1Object);
  */
 KJUR.asn1.DERObjectIdentifier = function(params) {
     var itox = function(i) {
-	var h = i.toString(16);
-	if (h.length == 1) h = '0' + h;
-	return h;
+  var h = i.toString(16);
+  if (h.length == 1) h = '0' + h;
+  return h;
     };
     var roidtox = function(roid) {
-	var h = '';
-	var bi = new BigInteger(roid, 10);
-	var b = bi.toString(2);
-	var padLen = 7 - b.length % 7;
-	if (padLen == 7) padLen = 0;
-	var bPad = '';
-	for (var i = 0; i < padLen; i++) bPad += '0';
-	b = bPad + b;
-	for (var i = 0; i < b.length - 1; i += 7) {
-	    var b8 = b.substr(i, 7);
-	    if (i != b.length - 7) b8 = '1' + b8;
-	    h += itox(parseInt(b8, 2));
-	}
-	return h;
+  var h = '';
+  var bi = new BigInteger(roid, 10);
+  var b = bi.toString(2);
+  var padLen = 7 - b.length % 7;
+  if (padLen == 7) padLen = 0;
+  var bPad = '';
+  for (var i = 0; i < padLen; i++) bPad += '0';
+  b = bPad + b;
+  for (var i = 0; i < b.length - 1; i += 7) {
+      var b8 = b.substr(i, 7);
+      if (i != b.length - 7) b8 = '1' + b8;
+      h += itox(parseInt(b8, 2));
+  }
+  return h;
     }
 
     KJUR.asn1.DERObjectIdentifier.superclass.constructor.call(this);
@@ -2983,10 +2984,10 @@ KJUR.asn1.DERObjectIdentifier = function(params) {
      * @param {String} newHexString hexadecimal value of OID bytes
      */
     this.setValueHex = function(newHexString) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.s = null;
-	this.hV = newHexString;
+  this.hTLV = null;
+  this.isModified = true;
+  this.s = null;
+  this.hV = newHexString;
     };
 
     /**
@@ -2997,21 +2998,21 @@ KJUR.asn1.DERObjectIdentifier = function(params) {
      * @param {String} oidString OID string (ex. 2.5.4.13)
      */
     this.setValueOidString = function(oidString) {
-	if (! oidString.match(/^[0-9.]+$/)) {
-	    throw "malformed oid string: " + oidString;
-	}
-	var h = '';
-	var a = oidString.split('.');
-	var i0 = parseInt(a[0]) * 40 + parseInt(a[1]);
-	h += itox(i0);
-	a.splice(0, 2);
-	for (var i = 0; i < a.length; i++) {
-	    h += roidtox(a[i]);
-	}
-	this.hTLV = null;
-	this.isModified = true;
-	this.s = null;
-	this.hV = h;
+  if (! oidString.match(/^[0-9.]+$/)) {
+      throw "malformed oid string: " + oidString;
+  }
+  var h = '';
+  var a = oidString.split('.');
+  var i0 = parseInt(a[0]) * 40 + parseInt(a[1]);
+  h += itox(i0);
+  a.splice(0, 2);
+  for (var i = 0; i < a.length; i++) {
+      h += roidtox(a[i]);
+  }
+  this.hTLV = null;
+  this.isModified = true;
+  this.s = null;
+  this.hV = h;
     };
 
     /**
@@ -3026,26 +3027,26 @@ KJUR.asn1.DERObjectIdentifier = function(params) {
      * Otherwise raise error.
      */
     this.setValueName = function(oidName) {
-	if (typeof KJUR.asn1.x509.OID.name2oidList[oidName] != "undefined") {
-	    var oid = KJUR.asn1.x509.OID.name2oidList[oidName];
-	    this.setValueOidString(oid);
-	} else {
-	    throw "DERObjectIdentifier oidName undefined: " + oidName;
-	}
+  if (typeof KJUR.asn1.x509.OID.name2oidList[oidName] != "undefined") {
+      var oid = KJUR.asn1.x509.OID.name2oidList[oidName];
+      this.setValueOidString(oid);
+  } else {
+      throw "DERObjectIdentifier oidName undefined: " + oidName;
+  }
     };
 
     this.getFreshValueHex = function() {
-	return this.hV;
+  return this.hV;
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['oid'] != "undefined") {
-	    this.setValueOidString(params['oid']);
-	} else if (typeof params['hex'] != "undefined") {
-	    this.setValueHex(params['hex']);
-	} else if (typeof params['name'] != "undefined") {
-	    this.setValueName(params['name']);
-	}
+  if (typeof params['oid'] != "undefined") {
+      this.setValueOidString(params['oid']);
+  } else if (typeof params['hex'] != "undefined") {
+      this.setValueHex(params['hex']);
+  } else if (typeof params['name'] != "undefined") {
+      this.setValueName(params['name']);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERObjectIdentifier, KJUR.asn1.ASN1Object);
@@ -3168,21 +3169,21 @@ KJUR.asn1.DERUTCTime = function(params) {
      * @param {Date} dateObject Date object to set ASN.1 value(V)
      */
     this.setByDate = function(dateObject) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.date = dateObject;
-	this.s = this.formatDate(this.date, 'utc');
-	this.hV = stohex(this.s);
+  this.hTLV = null;
+  this.isModified = true;
+  this.date = dateObject;
+  this.s = this.formatDate(this.date, 'utc');
+  this.hV = stohex(this.s);
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['str'] != "undefined") {
-	    this.setString(params['str']);
-	} else if (typeof params['hex'] != "undefined") {
-	    this.setStringHex(params['hex']);
-	} else if (typeof params['date'] != "undefined") {
-	    this.setByDate(params['date']);
-	}
+  if (typeof params['str'] != "undefined") {
+      this.setString(params['str']);
+  } else if (typeof params['hex'] != "undefined") {
+      this.setStringHex(params['hex']);
+  } else if (typeof params['date'] != "undefined") {
+      this.setByDate(params['date']);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERUTCTime, KJUR.asn1.DERAbstractTime);
@@ -3222,21 +3223,21 @@ KJUR.asn1.DERGeneralizedTime = function(params) {
      * o.setByDate(date);
      */
     this.setByDate = function(dateObject) {
-	this.hTLV = null;
-	this.isModified = true;
-	this.date = dateObject;
-	this.s = this.formatDate(this.date, 'gen');
-	this.hV = stohex(this.s);
+  this.hTLV = null;
+  this.isModified = true;
+  this.date = dateObject;
+  this.s = this.formatDate(this.date, 'gen');
+  this.hV = stohex(this.s);
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['str'] != "undefined") {
-	    this.setString(params['str']);
-	} else if (typeof params['hex'] != "undefined") {
-	    this.setStringHex(params['hex']);
-	} else if (typeof params['date'] != "undefined") {
-	    this.setByDate(params['date']);
-	}
+  if (typeof params['str'] != "undefined") {
+      this.setString(params['str']);
+  } else if (typeof params['hex'] != "undefined") {
+      this.setStringHex(params['hex']);
+  } else if (typeof params['date'] != "undefined") {
+      this.setByDate(params['date']);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERGeneralizedTime, KJUR.asn1.DERAbstractTime);
@@ -3260,13 +3261,13 @@ KJUR.asn1.DERSequence = function(params) {
     KJUR.asn1.DERSequence.superclass.constructor.call(this, params);
     this.hT = "30";
     this.getFreshValueHex = function() {
-	var h = '';
-	for (var i = 0; i < this.asn1Array.length; i++) {
-	    var asn1Obj = this.asn1Array[i];
-	    h += asn1Obj.getEncodedHex();
-	}
-	this.hV = h;
-	return this.hV;
+  var h = '';
+  for (var i = 0; i < this.asn1Array.length; i++) {
+      var asn1Obj = this.asn1Array[i];
+      h += asn1Obj.getEncodedHex();
+  }
+  this.hV = h;
+  return this.hV;
     };
 };
 JSX.extend(KJUR.asn1.DERSequence, KJUR.asn1.DERAbstractStructured);
@@ -3290,14 +3291,14 @@ KJUR.asn1.DERSet = function(params) {
     KJUR.asn1.DERSet.superclass.constructor.call(this, params);
     this.hT = "31";
     this.getFreshValueHex = function() {
-	var a = new Array();
-	for (var i = 0; i < this.asn1Array.length; i++) {
-	    var asn1Obj = this.asn1Array[i];
-	    a.push(asn1Obj.getEncodedHex());
-	}
-	a.sort();
-	this.hV = a.join('');
-	return this.hV;
+  var a = new Array();
+  for (var i = 0; i < this.asn1Array.length; i++) {
+      var asn1Obj = this.asn1Array[i];
+      a.push(asn1Obj.getEncodedHex());
+  }
+  a.sort();
+  this.hV = a.join('');
+  return this.hV;
     };
 };
 JSX.extend(KJUR.asn1.DERSet, KJUR.asn1.DERAbstractStructured);
@@ -3344,36 +3345,36 @@ KJUR.asn1.DERTaggedObject = function(params) {
      * @param {ASN1Object} asn1Object ASN.1 to encapsulate
      */
     this.setASN1Object = function(isExplicitFlag, tagNoHex, asn1Object) {
-	this.hT = tagNoHex;
-	this.isExplicit = isExplicitFlag;
-	this.asn1Object = asn1Object;
-	if (this.isExplicit) {
-	    this.hV = this.asn1Object.getEncodedHex();
-	    this.hTLV = null;
-	    this.isModified = true;
-	} else {
-	    this.hV = null;
-	    this.hTLV = asn1Object.getEncodedHex();
-	    this.hTLV = this.hTLV.replace(/^../, tagNoHex);
-	    this.isModified = false;
-	}
+  this.hT = tagNoHex;
+  this.isExplicit = isExplicitFlag;
+  this.asn1Object = asn1Object;
+  if (this.isExplicit) {
+      this.hV = this.asn1Object.getEncodedHex();
+      this.hTLV = null;
+      this.isModified = true;
+  } else {
+      this.hV = null;
+      this.hTLV = asn1Object.getEncodedHex();
+      this.hTLV = this.hTLV.replace(/^../, tagNoHex);
+      this.isModified = false;
+  }
     };
 
     this.getFreshValueHex = function() {
-	return this.hV;
+  return this.hV;
     };
 
     if (typeof params != "undefined") {
-	if (typeof params['tag'] != "undefined") {
-	    this.hT = params['tag'];
-	}
-	if (typeof params['explicit'] != "undefined") {
-	    this.isExplicit = params['explicit'];
-	}
-	if (typeof params['obj'] != "undefined") {
-	    this.asn1Object = params['obj'];
-	    this.setASN1Object(this.isExplicit, this.hT, this.asn1Object);
-	}
+  if (typeof params['tag'] != "undefined") {
+      this.hT = params['tag'];
+  }
+  if (typeof params['explicit'] != "undefined") {
+      this.isExplicit = params['explicit'];
+  }
+  if (typeof params['obj'] != "undefined") {
+      this.asn1Object = params['obj'];
+      this.setASN1Object(this.isExplicit, this.hT, this.asn1Object);
+  }
     }
 };
 JSX.extend(KJUR.asn1.DERTaggedObject, KJUR.asn1.ASN1Object);// Hex JavaScript decoder
