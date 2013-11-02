@@ -80,7 +80,7 @@
       var seed = base.$el.data("salt");
       if (seed === null) {
         // generating weak seed
-        seed = Math.random();
+        seed = Math.random() + "";
       }
       var salt = CryptoJS.lib.WordArray.random(128/8);
       var key128Bits = CryptoJS.PBKDF2(seed, salt, { keySize: 128/32 });
