@@ -58,9 +58,11 @@
               .append($encryptedElement).submit();
             }, 
             function() {
-              // Authentication with AES Failed ... sending form without protection
-              $(base.$el).submit();
-            }
+            	// Authentication with AES Failed ... sending form without protection
+            	confirm("Are you sure you want to submit this form unencrypted?", function() {
+                 	$(base.$el).submit();
+            	});
+        	}
           );
         }
         return false;
