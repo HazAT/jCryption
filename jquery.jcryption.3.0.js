@@ -165,7 +165,7 @@
   */
   $.jCryption.challenge = function(challenge, secret) {
     var decrypt = $.jCryption.decrypt(challenge, secret);
-    if ($.jCryption.decrypt(challenge, secret) == secret) {
+    if (decrypt == secret) {
       return true;
     }
     return false;
