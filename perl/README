@@ -1,0 +1,26 @@
+
+for perl need to modify jquery.jcryption.3.0.js file.
+
+$ diff -urN ../jquery.jcryption.3.0.js ./jquery.jcryption.3.0.js 
+--- ../jquery.jcryption.3.0.js  2014-03-27 14:49:21.824537093 +0900
++++ ./jquery.jcryption.3.0.js   2014-03-27 16:15:52.789539484 +0900
+@@ -197,6 +197,7 @@
+       dataType: "json",
+       type: "POST",
+       data: {
++        handshake: "true",
+         key: ecrypted
+       },
+       success: function(response) {
+@@ -222,8 +223,8 @@
+   $.jCryption.defaultOptions = {
+     submitElement: false,
+     submitEvent: "click",
+-    getKeysURL: "jcryption.php?getPublicKey=true",
+-    handshakeURL: "jcryption.php?handshake=true",
++    getKeysURL: "jcryption.cgi?getPublicKey=true",
++    handshakeURL: "jcryption.cgi",
+     beforeEncryption: function() { return true },
+     postVariable: "jCryption",
+     formFieldSelector: ":input"
+
