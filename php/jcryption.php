@@ -1,98 +1,54 @@
 <?php
-	// Start the session so we can use sessions
-	session_start();
+require_once('sqAES.php');
+				
+session_start();
 
-	$descriptorspec = array(
-	   0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
-	   1 => array("pipe", "w")  // stdout is a pipe that the child will write to
-	);
+if(isset($_GET['getPublicKey'])) {
+	Header('Content-type: application/json');
+	echo json_encode(array('publickey' => file_get_contents('rsa_1024_pub.pem')));
+	exit();
+}
+
+if (isset($_GET['handshake'])) {
+	// Decrypt the client's request
+	openssl_private_decrypt(base64_decode($_POST['key']), $key, file_get_contents('rsa_1024_priv.pem'));
+	$_SESSION['key'] = $key;
+	// JSON encode the challenge
+	Header('Content-type: application/json');
+	echo json_encode(array('challenge' =>  sqAES::crypt($key, $key)));
+	exit();
+}
+
+if (isset($_GET['decrypttest'])) {
+	// set timezone just in case
+	date_default_timezone_set('UTC');
+	// Get some test data to encrypt, this is an ISO 8601 timestamp
+	$toEncrypt = date('c');
+
+	// get the key from the session
+	$key = $_SESSION['key'];
+
+	$encrypted = sqAES::crypt($key, $toEncrypt);
 	
-	// if the GET parameter "generateKeypair" is set
-	if(isset($_GET["getPublicKey"])) {
-		$arrOutput = array(
-			"publickey" => file_get_contents('rsa_1024_pub.pem')
-		);
-		// Convert the response to JSON, and send it to the client
-		echo json_encode($arrOutput);
-		// else if the GET parameter "decrypttest" is set
-	} elseif (isset($_GET["handshake"])) {
-		// Decrypt the client's request
-		$cmd = sprintf("openssl rsautl -decrypt -inkey rsa_1024_priv.pem");
-		$process = proc_open($cmd, $descriptorspec, $pipes);
-		if (is_resource($process)) {
-		    fwrite($pipes[0], base64_decode($_POST['key']));
-		    fclose($pipes[0]);
+	Header('Content-type: application/json');
+	echo json_encode( 
+		array(
+			'encrypted' => $encrypted,
+			'unencrypted' => $toEncrypt
+		)
+	);
+	exit();
+}
 
-		    $key = stream_get_contents($pipes[1]);
-		    fclose($pipes[1]);
-		    proc_close($process);
-		}
-		// Save the AES key into the session
-		$_SESSION["key"] = $key;
-		
-		// JSON encode the challenge
-		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:'$key' -a -e");
-		$process = proc_open($cmd, $descriptorspec, $pipes);
-		if (is_resource($process)) {
-		    fwrite($pipes[0], $key);
-		    fclose($pipes[0]);
+if(isset($_POST['jCryption'])) {
+	// Decrypt the client's request and stick it in the _POST & _REQUEST globals.
+	parse_str(sqAES::decrypt($_SESSION['key'], $_POST['jCryption']), $_POST);
+	unset($_SESSION['key']);
+	unset($_REQUEST['jCryption']);
+	$_REQUEST = array_merge($_POST, $_REQUEST);
+}
 
-		    // we have to trim all newlines and whitespaces by ourself
-		    $challenge = trim(str_replace("\n", "", stream_get_contents($pipes[1])));
-		    fclose($pipes[1]);
-		    proc_close($process);
-		}
+Header('Content-type: text/plain');
+print_r($_POST);
 
-		echo json_encode(array("challenge" =>  $challenge));
-		// echo json_encode(array("challenge" => AesCtr::encrypt($key, $key, 256)));
-	} elseif (isset($_GET["decrypttest"])) {
-		// set timezone just in case
-		date_default_timezone_set('UTC');
-		// Get some test data to encrypt, this is an ISO 8601 timestamp
-		$toEncrypt = date("c");
-
-		// get the key from the session
-		$key = $_SESSION["key"];
-
-		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:'$key' -a -e");
-		$process = proc_open($cmd, $descriptorspec, $pipes);
-		if (is_resource($process)) {
-		    fwrite($pipes[0], $toEncrypt);
-		    fclose($pipes[0]);
-
-		    $encrypted = stream_get_contents($pipes[1]);
-		    fclose($pipes[1]);
-		    proc_close($process);
-		}
-
-		echo json_encode( 
-			array(
-				"encrypted" => $encrypted,
-				"unencrypted" => $toEncrypt
-			)
-		);
-	// else if the GET parameter "handshake" is set
-	} elseif (isset($_POST['jCryption'])) {
-		$key = $_SESSION["key"];
-
-		// Decrypt the client's request and send it to the clients(uncrypted)
-		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:'$key' -d");
-		$process = proc_open($cmd, $descriptorspec, $pipes);
-		if (is_resource($process)) {
-		    fwrite($pipes[0], base64_decode($_POST['jCryption']));
-		    fclose($pipes[0]);
-
-		    $data = stream_get_contents($pipes[1]);
-		    fclose($pipes[1]);
-		    proc_close($process);
-		}
-		
-		if(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-			echo json_encode(array("data" => $data));
-		} else {
-			parse_str($data, $output);
-			print_r($output);
-		}
-	} else {
-		echo json_encode($_POST);
-	}
+?>
