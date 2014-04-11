@@ -1,53 +1,21 @@
 <?php
-require_once('sqAES.php');
-				
-session_start();
 
-if(isset($_GET['getPublicKey'])) {
-	Header('Content-type: application/json');
-	echo json_encode(array('publickey' => file_get_contents('rsa_1024_pub.pem')));
-	exit();
-}
+/* example jCryption entry point - will handle handshake, getPublicKey,
+ * decrypttest or a dump of posted form variables.
+ * Key files specified below should be stored outside the web tree
+ * but for the example they are not.
+ *
+ * To generate keys:
+ * 
+ * openssl genrsa -out rsa_1024_priv.pem 1024
+ * openssl rsa -pubout -in rsa_1024_priv.pem -out rsa_1024_pub.pem
+ */
 
-if (isset($_GET['handshake'])) {
-	// Decrypt the client's request
-	openssl_private_decrypt(base64_decode($_POST['key']), $key, file_get_contents('rsa_1024_priv.pem'));
-	$_SESSION['key'] = $key;
-	// JSON encode the challenge
-	Header('Content-type: application/json');
-	echo json_encode(array('challenge' =>  sqAES::crypt($key, $key)));
-	exit();
-}
+require_once('include/sqAES.php');
+require_once('include/jcryption.php');
 
-if (isset($_GET['decrypttest'])) {
-	// set timezone just in case
-	date_default_timezone_set('UTC');
-	// Get some test data to encrypt, this is an ISO 8601 timestamp
-	$toEncrypt = date('c');
-
-	// get the key from the session
-	$key = $_SESSION['key'];
-
-	$encrypted = sqAES::crypt($key, $toEncrypt);
-	
-	Header('Content-type: application/json');
-	echo json_encode( 
-		array(
-			'encrypted' => $encrypted,
-			'unencrypted' => $toEncrypt
-		)
-	);
-	exit();
-}
-
-if(isset($_POST['jCryption'])) {
-	// Decrypt the client's request and stick it in the _POST & _REQUEST globals.
-	parse_str(sqAES::decrypt($_SESSION['key'], $_POST['jCryption']), $_POST);
-	unset($_SESSION['key']);
-	unset($_REQUEST['jCryption']);
-	$_REQUEST = array_merge($_POST, $_REQUEST);
-}
-
+$jc = new jcryption('rsa_1024_pub.pem','rsa_1024_priv.pem');
+$jc->go();
 Header('Content-type: text/plain');
 print_r($_POST);
 
