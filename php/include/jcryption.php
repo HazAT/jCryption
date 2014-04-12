@@ -66,7 +66,8 @@ class jcryption {
 	{
 		self::session_start();
 		parse_str(sqAES::decrypt($_SESSION[self::SESSION_KEY], $_POST[self::POST_KEY]), $_POST);
-		unset($_SESSION[self::SESSION_KEY]);
+		//Can't unset the key here, it breaks bi-directional.
+		//unset($_SESSION[self::SESSION_KEY]);
 		unset($_REQUEST[self::POST_KEY]);
 		$_REQUEST = array_merge($_POST, $_REQUEST);
 	}
