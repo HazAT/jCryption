@@ -27,11 +27,12 @@
 		    fclose($pipes[1]);
 		    proc_close($process);
 		}
+		
 		// Save the AES key into the session
 		$_SESSION["key"] = $key;
 		
 		// JSON encode the challenge
-		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:'$key' -a -e");
+		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:" . escapeshellarg($key) . " -a -e");
 		$process = proc_open($cmd, $descriptorspec, $pipes);
 		if (is_resource($process)) {
 		    fwrite($pipes[0], $key);
@@ -54,7 +55,7 @@
 		// get the key from the session
 		$key = $_SESSION["key"];
 
-		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:'$key' -a -e");
+		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:" . escapeshellarg($key) . " -a -e");
 		$process = proc_open($cmd, $descriptorspec, $pipes);
 		if (is_resource($process)) {
 		    fwrite($pipes[0], $toEncrypt);
@@ -76,7 +77,7 @@
 		$key = $_SESSION["key"];
 
 		// Decrypt the client's request and send it to the clients(uncrypted)
-		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:'$key' -d");
+		$cmd = sprintf("openssl enc -aes-256-cbc -pass pass:" . escapeshellarg($key) . " -d");
 		$process = proc_open($cmd, $descriptorspec, $pipes);
 		if (is_resource($process)) {
 		    fwrite($pipes[0], base64_decode($_POST['jCryption']));
