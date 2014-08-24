@@ -1,5 +1,5 @@
 /*
-* jCryption JavaScript data encryption v3.0
+* jCryption JavaScript data encryption v3.0.1
 * http://www.jcryption.org/
 *
 * Copyright (c) 2013 Daniel Griesser
@@ -59,7 +59,7 @@
             }, 
             function() {
             	// Authentication with AES Failed ... sending form without protection
-            	confirm("Are you sure you want to submit this form unencrypted?", function() {
+            	confirm("Authentication with Server failed, are you sure you want to submit this form unencrypted?", function() {
                  	$(base.$el).submit();
             	});
         	}
@@ -84,9 +84,8 @@
         // generating weak seed
         seed = Math.random() + "";
       }
-      var salt = CryptoJS.lib.WordArray.random(128/8);
-      var key128Bits = CryptoJS.PBKDF2(seed, salt, { keySize: 128/32 });
-      console.log(CryptoJS.SHA1(key128Bits).toString());
+      var salt = CryptoJS.lib.WordArray.random(16);
+      var key128Bits = CryptoJS.PBKDF2(seed, salt, { keySize: 4 });
       base.$el.data("key", CryptoJS.SHA1(key128Bits).toString());
       return base.getKey();
     };
@@ -223,8 +222,8 @@
   $.jCryption.defaultOptions = {
     submitElement: false,
     submitEvent: "click",
-    getKeysURL: "encrypt.cgi?getPublicKey=true",
-    handshakeURL: "encrypt.cgi",
+    getKeysURL: "jcryption.cgi?getPublicKey=true",
+    handshakeURL: "jcryption.cgi",
     beforeEncryption: function() { return true },
     postVariable: "jCryption",
     formFieldSelector: ":input"
