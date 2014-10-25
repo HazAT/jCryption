@@ -1,5 +1,5 @@
 /*
-* jCryption JavaScript data encryption v3.0.1
+* jCryption JavaScript data encryption v3.1.0
 * http://www.jcryption.org/
 *
 * Copyright (c) 2013 Daniel Griesser
@@ -12,26 +12,16 @@
 (function($) {
   $.jCryption = function(el, options) {
     var base = this;
-    
+
     base.$el = $(el);
     base.el = el;
 
     base.$el.data("jCryption", base);
-    base.$el.data("salt", null);
     base.$el.data("key", null);
-    
+
     base.init = function() {
       base.options = $.extend({}, $.jCryption.defaultOptions, options);
 
-      // Making a good random salt
-      base.$el.bind('mousemove', function(e) {
-        if (base.$el.data("salt") === null) {
-          base.$el.data("salt", (e.pageX + e.pageY) * Math.random() + "");
-        } else {
-          base.$el.unbind('mousemove');
-        }
-      });
-      
       $encryptedElement = $("<input />",{
         type:'hidden',
         name:base.options.postVariable
@@ -56,7 +46,7 @@
               $(base.$el).find(base.options.formFieldSelector)
               .attr("disabled", true).end()
               .append($encryptedElement).submit();
-            }, 
+            },
             function() {
             	// Authentication with AES Failed ... sending form without protection
             	confirm("Authentication with Server failed, are you sure you want to submit this form unencrypted?", function() {
@@ -68,9 +58,9 @@
         return false;
       });
     };
-    
+
     base.init();
-    
+
     /**
     * Creates a random string(key) for use in the AES algorithm
     */
@@ -78,18 +68,22 @@
       if (base.$el.data("key") !== null) {
         return base.$el.data("key");
       }
-      // no good salt available
-      var seed = base.$el.data("salt");
-      if (seed === null) {
-        // generating weak seed
-        seed = Math.random() + "";
+
+      var key;
+
+      if (window.crypto && window.crypto.getRandomValues) {
+	       var ckey = new Uint32Array(8);
+        window.crypto.getRandomValues(ckey);
+	       key = CryptoJS.lib.WordArray.create(ckey);
+      } else {
+	       key = CryptoJS.lib.WordArray.random(128/4);
       }
-      var salt = CryptoJS.lib.WordArray.random(16);
-      var key128Bits = CryptoJS.PBKDF2(seed, salt, { keySize: 4 });
-      base.$el.data("key", CryptoJS.SHA1(key128Bits).toString());
+
+      var salt = CryptoJS.lib.WordArray.random(128/8);
+      base.$el.data("key", key.toString());
       return base.getKey();
     };
-    
+
     /**
     * Authenticate with the server (One way)
     * @param {function} success The function to call if the operation was successfull
@@ -100,7 +94,7 @@
       $.jCryption.authenticate(key, base.options.getKeysURL, base.options.handshakeURL, success, failure);
     };
   };
-  
+
   /**
   * Authenticates with the server
   * @param {string} AESEncryptionKey The AES key
@@ -122,7 +116,7 @@
       });
     });
   };
-  
+
   /**
   * Gets the RSA keys from the specified url, and saves it into a RSA keypair
   * @param {string} url The url to contact
@@ -136,7 +130,7 @@
       }
     });
   };
-  
+
   /**
   * Decrypts data using AES 256
   * @param {string} data The data to decrypt(Ciphertext)
@@ -146,7 +140,7 @@
   $.jCryption.decrypt = function(data, secret) {
     return $.jCryption.hex2string(CryptoJS.AES.decrypt(data, secret) + "");
   };
-  
+
   /**
   * Encrypts data using AES 256
   * @param {string} data The data to encrypt(Plaintext)
@@ -156,7 +150,7 @@
   $.jCryption.encrypt = function(data, secret) {
     return CryptoJS.AES.encrypt(data, secret) + "";
   };
-  
+
   /**
   * Makes sure that the challenge the client sent, is correct
   * @param {string} challenge The challenge string
@@ -169,8 +163,8 @@
     }
     return false;
   };
-  
-  
+
+
   /**
   * Converts a hex into a string
   * @param {hex} string representing a hex number
@@ -203,7 +197,7 @@
       }
     });
   };
-  
+
   /**
   * Encrypts the AES secret using RSA
   * @param {string} secret The AES secret
@@ -217,7 +211,7 @@
       return encryptedString;
     }
   };
-  
+
   $.jCryption.defaultOptions = {
     submitElement: false,
     submitEvent: "click",
@@ -1533,7 +1527,7 @@ if(rng_pool == null) {
     var z = window.crypto.random(32);
     for(t = 0; t < z.length; ++t)
       rng_pool[rng_pptr++] = z.charCodeAt(t) & 255;
-  }  
+  }
   while(rng_pptr < rng_psize) {  // extract some randomness from Math.random()
     t = Math.floor(65536 * Math.random());
     rng_pool[rng_pptr++] = t >>> 8;
@@ -2219,7 +2213,7 @@ JSX.extend = function(subc, superc, overrides) {
  * This software is licensed under the terms of the MIT License.
  * http://kjur.github.com/jsrsasign/license
  *
- * The above copyright and license notice shall be 
+ * The above copyright and license notice shall be
  * included in all copies or substantial portions of the Software.
  */
 
@@ -2232,17 +2226,17 @@ JSX.extend = function(subc, superc, overrides) {
  * @license <a href="http://kjur.github.io/jsrsasign/license/">MIT License</a>
  */
 
-/** 
+/**
  * kjur's class library name space
  * <p>
  * This name space provides following name spaces:
  * <ul>
  * <li>{@link KJUR.asn1} - ASN.1 primitive hexadecimal encoder</li>
  * <li>{@link KJUR.asn1.x509} - ASN.1 structure for X.509 certificate and CRL</li>
- * <li>{@link KJUR.crypto} - Java Cryptographic Extension(JCE) style MessageDigest/Signature 
+ * <li>{@link KJUR.crypto} - Java Cryptographic Extension(JCE) style MessageDigest/Signature
  * class and utilities</li>
  * </ul>
- * </p> 
+ * </p>
  * NOTE: Please ignore method summary and document of this namespace. This caused by a bug of jsdoc2.
   * @name KJUR
  * @namespace kjur's class library name space
@@ -2253,8 +2247,8 @@ if (typeof KJUR == "undefined" || !KJUR) KJUR = {};
  * kjur's ASN.1 class library name space
  * <p>
  * This is ITU-T X.690 ASN.1 DER encoder class library and
- * class structure and methods is very similar to 
- * org.bouncycastle.asn1 package of 
+ * class structure and methods is very similar to
+ * org.bouncycastle.asn1 package of
  * well known BouncyCaslte Cryptography Library.
  *
  * <h4>PROVIDING ASN.1 PRIMITIVES</h4>
@@ -2355,8 +2349,8 @@ KJUR.asn1.ASN1Util = new function() {
   var dataB64 = CryptoJS.enc.Base64.stringify(dataWA);
   var pemBody = dataB64.replace(/(.{64})/g, "$1\r\n");
         pemBody = pemBody.replace(/\r\n$/, '');
-  return "-----BEGIN " + pemHeader + "-----\r\n" + 
-               pemBody + 
+  return "-----BEGIN " + pemHeader + "-----\r\n" +
+               pemBody +
                "\r\n-----END " + pemHeader + "-----\r\n";
     };
 };
@@ -2771,7 +2765,7 @@ JSX.extend(KJUR.asn1.DERInteger, KJUR.asn1.ASN1Object);
  * @name KJUR.asn1.DERBitString
  * @class class for ASN.1 DER encoded BitString primitive
  * @extends KJUR.asn1.ASN1Object
- * @description 
+ * @description
  * <br/>
  * As for argument 'params' for constructor, you can specify one of
  * following properties:
@@ -2824,7 +2818,7 @@ KJUR.asn1.DERBitString = function(params) {
      * @function
      * @param {String} binaryString binary value string (i.e. '10111')
      * @description
-     * Its unused bits will be calculated automatically by length of 
+     * Its unused bits will be calculated automatically by length of
      * 'binaryValue'. <br/>
      * NOTE: Trailing zeros '0' will be ignored.
      */
@@ -2840,7 +2834,7 @@ KJUR.asn1.DERBitString = function(params) {
       var b = binaryString.substr(i, 8);
       var x = parseInt(b, 2).toString(16);
       if (x.length == 1) x = '0' + x;
-      h += x;  
+      h += x;
   }
   this.hTLV = null;
   this.isModified = true;
@@ -3313,13 +3307,13 @@ JSX.extend(KJUR.asn1.DERSet, KJUR.asn1.DERAbstractStructured);
  * @description
  * <br/>
  * Parameter 'tagNoNex' is ASN.1 tag(T) value for this object.
- * For example, if you find '[1]' tag in a ASN.1 dump, 
+ * For example, if you find '[1]' tag in a ASN.1 dump,
  * 'tagNoHex' will be 'a1'.
  * <br/>
  * As for optional argument 'params' for constructor, you can specify *ANY* of
  * following properties:
  * <ul>
- * <li>explicit - specify true if this is explicit tag otherwise false 
+ * <li>explicit - specify true if this is explicit tag otherwise false
  *     (default is 'true').</li>
  * <li>tag - specify tag (default is 'a0' which means [0])</li>
  * <li>obj - specify ASN1Object which is tagged</li>
@@ -3384,7 +3378,7 @@ JSX.extend(KJUR.asn1.DERTaggedObject, KJUR.asn1.ASN1Object);// Hex JavaScript de
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -3448,7 +3442,7 @@ window.Hex = Hex;
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -3533,7 +3527,7 @@ window.Base64 = Base64;
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -4077,13 +4071,13 @@ ASN1.prototype.getHexStringValue = function(){
  * Method to parse a pem encoded string containing both a public or private key.
  * The method will translate the pem encoded string in a der encoded string and
  * will parse private key and public key parameters. This method accepts public key
- * in the rsaencryption pkcs #1 format (oid: 1.2.840.113549.1.1.1). 
+ * in the rsaencryption pkcs #1 format (oid: 1.2.840.113549.1.1.1).
  * @todo Check how many rsa formats use the same format of pkcs #1. The format is defined as:
  * PublicKeyInfo ::= SEQUENCE {
  *   algorithm       AlgorithmIdentifier,
  *   PublicKey       BIT STRING
  * }
- * Where AlgorithmIdentifier is: 
+ * Where AlgorithmIdentifier is:
  * AlgorithmIdentifier ::= SEQUENCE {
  *   algorithm       OBJECT IDENTIFIER,     the OID of the enc algorithm
  *   parameters      ANY DEFINED BY algorithm OPTIONAL (NULL for PKCS #1)
@@ -4093,7 +4087,7 @@ ASN1.prototype.getHexStringValue = function(){
  *   modulus           INTEGER,  -- n
  *   publicExponent    INTEGER   -- e
  * }
- * it's possible to examine the structure of the keys obtained from openssl using 
+ * it's possible to examine the structure of the keys obtained from openssl using
  * an asn.1 dumper as the one used here to parse the components: http://lapo.it/asn1js/
  * @argument {string} pem the pem encoded string, can include the BEGIN/END header/footer
  * @private
@@ -4120,7 +4114,7 @@ RSAKey.prototype.parseKey = function(pem) {
             var prime1 = asn1.sub[4].getHexStringValue(); //bigint
             this.p = parseBigInt(prime1, 16);
 
-            var prime2 = asn1.sub[5].getHexStringValue(); //bigint 
+            var prime2 = asn1.sub[5].getHexStringValue(); //bigint
             this.q = parseBigInt(prime2, 16);
 
             var exponent1 = asn1.sub[6].getHexStringValue(); //bigint
@@ -4205,7 +4199,7 @@ RSAKey.prototype.getPrivateBaseKeyB64 = function (){
  *   algorithm       AlgorithmIdentifier,
  *   PublicKey       BIT STRING
  * }
- * Where AlgorithmIdentifier is: 
+ * Where AlgorithmIdentifier is:
  * AlgorithmIdentifier ::= SEQUENCE {
  *   algorithm       OBJECT IDENTIFIER,     the OID of the enc algorithm
  *   parameters      ANY DEFINED BY algorithm OPTIONAL (NULL for PKCS #1)
@@ -4226,7 +4220,7 @@ RSAKey.prototype.getPublicBaseKey = function() {
         ]
     };
     var first_sequence = new KJUR.asn1.DERSequence(options);
-    
+
     options = {
         'array' : [
             new KJUR.asn1.DERInteger({'bigint' : this.n}),
@@ -4234,12 +4228,12 @@ RSAKey.prototype.getPublicBaseKey = function() {
         ]
     };
     var second_sequence = new KJUR.asn1.DERSequence(options);
-    
+
     options = {
         'hex' : '00'+second_sequence.getEncodedHex()
     };
     var bit_string = new KJUR.asn1.DERBitString(options);
-    
+
     options = {
         'array' : [
             first_sequence,
@@ -4264,7 +4258,7 @@ RSAKey.prototype.getPublicBaseKeyB64 = function (){
  * characters.
  * @param {string} str the pem encoded string without header and footer
  * @param {Number} [width=64] - the length the string has to be wrapped at
- * @returns {string} 
+ * @returns {string}
  * @private
  */
 RSAKey.prototype.wordwrap = function(str, width) {
@@ -4345,8 +4339,8 @@ RSAKey.prototype.hasPrivateKeyProperty = function(obj){
  */
 RSAKey.prototype.parsePropertiesFrom = function(obj){
     this.n = obj.n;
-    this.e = obj.e;        
-    
+    this.e = obj.e;
+
     if (obj.hasOwnProperty('d')){
         this.d = obj.d;
         this.p = obj.p;
@@ -4387,8 +4381,8 @@ JSEncryptRSAKey.prototype.constructor = JSEncryptRSAKey;
 
 
 /**
- * 
- * @param {Object} [options = {}] - An object to customize JSEncrypt behaviour 
+ *
+ * @param {Object} [options = {}] - An object to customize JSEncrypt behaviour
  * possible parameters are:
  * - default_key_size        {number}  default: 1024 the key size in bit
  * - default_public_exponent {string}  default: '010001' the hexadecimal representation of the public exponent
@@ -4399,7 +4393,7 @@ var JSEncrypt = function(options) {
     options = options || {};
     this.default_key_size = parseInt(options.default_key_size) || 1024;
     this.default_public_exponent = options.default_public_exponent || '010001'; //65537 default openssl public exponent for rsa key type
-    this.log = options.log || false; 
+    this.log = options.log || false;
     // The private and public key.
     this.key = null;
 };
@@ -4472,7 +4466,7 @@ JSEncrypt.prototype.encrypt = function(string) {
 };
 
 /**
- * Getter for the current JSEncryptRSAKey object. If it doesn't exists a new object 
+ * Getter for the current JSEncryptRSAKey object. If it doesn't exists a new object
  * will be created and returned
  * @param {callback} [cb] the callback to be called if we want the key to be generated
  * in an async fashion
@@ -4545,6 +4539,7 @@ var JSEncrypt = JSEncryptExports.JSEncrypt;
 // Important call
 $.jCryption.crypt = new JSEncrypt();
 
+/* http://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/aes.js */
 /*
 CryptoJS v3.1.2
 code.google.com/p/crypto-js
@@ -4580,51 +4575,3 @@ b.keySize,b.ivSize);l.iv=d.iv;b=a.encrypt.call(this,b,c,d.key,l);b.mixIn(d);retu
 16,32,64,128,27,54],d=d.AES=p.extend({_doReset:function(){for(var a=this._key,c=a.words,d=a.sigBytes/4,a=4*((this._nRounds=d+6)+1),e=this._keySchedule=[],j=0;j<a;j++)if(j<d)e[j]=c[j];else{var k=e[j-1];j%d?6<d&&4==j%d&&(k=l[k>>>24]<<24|l[k>>>16&255]<<16|l[k>>>8&255]<<8|l[k&255]):(k=k<<8|k>>>24,k=l[k>>>24]<<24|l[k>>>16&255]<<16|l[k>>>8&255]<<8|l[k&255],k^=H[j/d|0]<<24);e[j]=e[j-d]^k}c=this._invKeySchedule=[];for(d=0;d<a;d++)j=a-d,k=d%4?e[j]:e[j-4],c[d]=4>d||4>=j?k:b[l[k>>>24]]^x[l[k>>>16&255]]^q[l[k>>>
 8&255]]^n[l[k&255]]},encryptBlock:function(a,b){this._doCryptBlock(a,b,this._keySchedule,t,r,w,v,l)},decryptBlock:function(a,c){var d=a[c+1];a[c+1]=a[c+3];a[c+3]=d;this._doCryptBlock(a,c,this._invKeySchedule,b,x,q,n,s);d=a[c+1];a[c+1]=a[c+3];a[c+3]=d},_doCryptBlock:function(a,b,c,d,e,j,l,f){for(var m=this._nRounds,g=a[b]^c[0],h=a[b+1]^c[1],k=a[b+2]^c[2],n=a[b+3]^c[3],p=4,r=1;r<m;r++)var q=d[g>>>24]^e[h>>>16&255]^j[k>>>8&255]^l[n&255]^c[p++],s=d[h>>>24]^e[k>>>16&255]^j[n>>>8&255]^l[g&255]^c[p++],t=
 d[k>>>24]^e[n>>>16&255]^j[g>>>8&255]^l[h&255]^c[p++],n=d[n>>>24]^e[g>>>16&255]^j[h>>>8&255]^l[k&255]^c[p++],g=q,h=s,k=t;q=(f[g>>>24]<<24|f[h>>>16&255]<<16|f[k>>>8&255]<<8|f[n&255])^c[p++];s=(f[h>>>24]<<24|f[k>>>16&255]<<16|f[n>>>8&255]<<8|f[g&255])^c[p++];t=(f[k>>>24]<<24|f[n>>>16&255]<<16|f[g>>>8&255]<<8|f[h&255])^c[p++];n=(f[n>>>24]<<24|f[g>>>16&255]<<16|f[h>>>8&255]<<8|f[k&255])^c[p++];a[b]=q;a[b+1]=s;a[b+2]=t;a[b+3]=n},keySize:8});u.AES=p._createHelper(d)})();
-
-
-/*
-CryptoJS v3.1.2
-code.google.com/p/crypto-js
-(c) 2009-2013 by Jeff Mott. All rights reserved.
-code.google.com/p/crypto-js/wiki/License
-*/
-var CryptoJS=CryptoJS||function(a,m){var r={},f=r.lib={},g=function(){},l=f.Base={extend:function(a){g.prototype=this;var b=new g;a&&b.mixIn(a);b.hasOwnProperty("init")||(b.init=function(){b.$super.init.apply(this,arguments)});b.init.prototype=b;b.$super=this;return b},create:function(){var a=this.extend();a.init.apply(a,arguments);return a},init:function(){},mixIn:function(a){for(var b in a)a.hasOwnProperty(b)&&(this[b]=a[b]);a.hasOwnProperty("toString")&&(this.toString=a.toString)},clone:function(){return this.init.prototype.extend(this)}},
-p=f.WordArray=l.extend({init:function(a,b){a=this.words=a||[];this.sigBytes=b!=m?b:4*a.length},toString:function(a){return(a||q).stringify(this)},concat:function(a){var b=this.words,d=a.words,c=this.sigBytes;a=a.sigBytes;this.clamp();if(c%4)for(var j=0;j<a;j++)b[c+j>>>2]|=(d[j>>>2]>>>24-8*(j%4)&255)<<24-8*((c+j)%4);else if(65535<d.length)for(j=0;j<a;j+=4)b[c+j>>>2]=d[j>>>2];else b.push.apply(b,d);this.sigBytes+=a;return this},clamp:function(){var n=this.words,b=this.sigBytes;n[b>>>2]&=4294967295<<
-32-8*(b%4);n.length=a.ceil(b/4)},clone:function(){var a=l.clone.call(this);a.words=this.words.slice(0);return a},random:function(n){for(var b=[],d=0;d<n;d+=4)b.push(4294967296*a.random()|0);return new p.init(b,n)}}),y=r.enc={},q=y.Hex={stringify:function(a){var b=a.words;a=a.sigBytes;for(var d=[],c=0;c<a;c++){var j=b[c>>>2]>>>24-8*(c%4)&255;d.push((j>>>4).toString(16));d.push((j&15).toString(16))}return d.join("")},parse:function(a){for(var b=a.length,d=[],c=0;c<b;c+=2)d[c>>>3]|=parseInt(a.substr(c,
-2),16)<<24-4*(c%8);return new p.init(d,b/2)}},G=y.Latin1={stringify:function(a){var b=a.words;a=a.sigBytes;for(var d=[],c=0;c<a;c++)d.push(String.fromCharCode(b[c>>>2]>>>24-8*(c%4)&255));return d.join("")},parse:function(a){for(var b=a.length,d=[],c=0;c<b;c++)d[c>>>2]|=(a.charCodeAt(c)&255)<<24-8*(c%4);return new p.init(d,b)}},fa=y.Utf8={stringify:function(a){try{return decodeURIComponent(escape(G.stringify(a)))}catch(b){throw Error("Malformed UTF-8 data");}},parse:function(a){return G.parse(unescape(encodeURIComponent(a)))}},
-h=f.BufferedBlockAlgorithm=l.extend({reset:function(){this._data=new p.init;this._nDataBytes=0},_append:function(a){"string"==typeof a&&(a=fa.parse(a));this._data.concat(a);this._nDataBytes+=a.sigBytes},_process:function(n){var b=this._data,d=b.words,c=b.sigBytes,j=this.blockSize,l=c/(4*j),l=n?a.ceil(l):a.max((l|0)-this._minBufferSize,0);n=l*j;c=a.min(4*n,c);if(n){for(var h=0;h<n;h+=j)this._doProcessBlock(d,h);h=d.splice(0,n);b.sigBytes-=c}return new p.init(h,c)},clone:function(){var a=l.clone.call(this);
-a._data=this._data.clone();return a},_minBufferSize:0});f.Hasher=h.extend({cfg:l.extend(),init:function(a){this.cfg=this.cfg.extend(a);this.reset()},reset:function(){h.reset.call(this);this._doReset()},update:function(a){this._append(a);this._process();return this},finalize:function(a){a&&this._append(a);return this._doFinalize()},blockSize:16,_createHelper:function(a){return function(b,d){return(new a.init(d)).finalize(b)}},_createHmacHelper:function(a){return function(b,d){return(new ga.HMAC.init(a,
-d)).finalize(b)}}});var ga=r.algo={};return r}(Math);
-(function(a){var m=CryptoJS,r=m.lib,f=r.Base,g=r.WordArray,m=m.x64={};m.Word=f.extend({init:function(a,p){this.high=a;this.low=p}});m.WordArray=f.extend({init:function(l,p){l=this.words=l||[];this.sigBytes=p!=a?p:8*l.length},toX32:function(){for(var a=this.words,p=a.length,f=[],q=0;q<p;q++){var G=a[q];f.push(G.high);f.push(G.low)}return g.create(f,this.sigBytes)},clone:function(){for(var a=f.clone.call(this),p=a.words=this.words.slice(0),g=p.length,q=0;q<g;q++)p[q]=p[q].clone();return a}})})();
-(function(){function a(){return g.create.apply(g,arguments)}for(var m=CryptoJS,r=m.lib.Hasher,f=m.x64,g=f.Word,l=f.WordArray,f=m.algo,p=[a(1116352408,3609767458),a(1899447441,602891725),a(3049323471,3964484399),a(3921009573,2173295548),a(961987163,4081628472),a(1508970993,3053834265),a(2453635748,2937671579),a(2870763221,3664609560),a(3624381080,2734883394),a(310598401,1164996542),a(607225278,1323610764),a(1426881987,3590304994),a(1925078388,4068182383),a(2162078206,991336113),a(2614888103,633803317),
-a(3248222580,3479774868),a(3835390401,2666613458),a(4022224774,944711139),a(264347078,2341262773),a(604807628,2007800933),a(770255983,1495990901),a(1249150122,1856431235),a(1555081692,3175218132),a(1996064986,2198950837),a(2554220882,3999719339),a(2821834349,766784016),a(2952996808,2566594879),a(3210313671,3203337956),a(3336571891,1034457026),a(3584528711,2466948901),a(113926993,3758326383),a(338241895,168717936),a(666307205,1188179964),a(773529912,1546045734),a(1294757372,1522805485),a(1396182291,
-2643833823),a(1695183700,2343527390),a(1986661051,1014477480),a(2177026350,1206759142),a(2456956037,344077627),a(2730485921,1290863460),a(2820302411,3158454273),a(3259730800,3505952657),a(3345764771,106217008),a(3516065817,3606008344),a(3600352804,1432725776),a(4094571909,1467031594),a(275423344,851169720),a(430227734,3100823752),a(506948616,1363258195),a(659060556,3750685593),a(883997877,3785050280),a(958139571,3318307427),a(1322822218,3812723403),a(1537002063,2003034995),a(1747873779,3602036899),
-a(1955562222,1575990012),a(2024104815,1125592928),a(2227730452,2716904306),a(2361852424,442776044),a(2428436474,593698344),a(2756734187,3733110249),a(3204031479,2999351573),a(3329325298,3815920427),a(3391569614,3928383900),a(3515267271,566280711),a(3940187606,3454069534),a(4118630271,4000239992),a(116418474,1914138554),a(174292421,2731055270),a(289380356,3203993006),a(460393269,320620315),a(685471733,587496836),a(852142971,1086792851),a(1017036298,365543100),a(1126000580,2618297676),a(1288033470,
-3409855158),a(1501505948,4234509866),a(1607167915,987167468),a(1816402316,1246189591)],y=[],q=0;80>q;q++)y[q]=a();f=f.SHA512=r.extend({_doReset:function(){this._hash=new l.init([new g.init(1779033703,4089235720),new g.init(3144134277,2227873595),new g.init(1013904242,4271175723),new g.init(2773480762,1595750129),new g.init(1359893119,2917565137),new g.init(2600822924,725511199),new g.init(528734635,4215389547),new g.init(1541459225,327033209)])},_doProcessBlock:function(a,f){for(var h=this._hash.words,
-g=h[0],n=h[1],b=h[2],d=h[3],c=h[4],j=h[5],l=h[6],h=h[7],q=g.high,m=g.low,r=n.high,N=n.low,Z=b.high,O=b.low,$=d.high,P=d.low,aa=c.high,Q=c.low,ba=j.high,R=j.low,ca=l.high,S=l.low,da=h.high,T=h.low,v=q,s=m,H=r,E=N,I=Z,F=O,W=$,J=P,w=aa,t=Q,U=ba,K=R,V=ca,L=S,X=da,M=T,x=0;80>x;x++){var B=y[x];if(16>x)var u=B.high=a[f+2*x]|0,e=B.low=a[f+2*x+1]|0;else{var u=y[x-15],e=u.high,z=u.low,u=(e>>>1|z<<31)^(e>>>8|z<<24)^e>>>7,z=(z>>>1|e<<31)^(z>>>8|e<<24)^(z>>>7|e<<25),D=y[x-2],e=D.high,k=D.low,D=(e>>>19|k<<13)^
-(e<<3|k>>>29)^e>>>6,k=(k>>>19|e<<13)^(k<<3|e>>>29)^(k>>>6|e<<26),e=y[x-7],Y=e.high,C=y[x-16],A=C.high,C=C.low,e=z+e.low,u=u+Y+(e>>>0<z>>>0?1:0),e=e+k,u=u+D+(e>>>0<k>>>0?1:0),e=e+C,u=u+A+(e>>>0<C>>>0?1:0);B.high=u;B.low=e}var Y=w&U^~w&V,C=t&K^~t&L,B=v&H^v&I^H&I,ha=s&E^s&F^E&F,z=(v>>>28|s<<4)^(v<<30|s>>>2)^(v<<25|s>>>7),D=(s>>>28|v<<4)^(s<<30|v>>>2)^(s<<25|v>>>7),k=p[x],ia=k.high,ea=k.low,k=M+((t>>>14|w<<18)^(t>>>18|w<<14)^(t<<23|w>>>9)),A=X+((w>>>14|t<<18)^(w>>>18|t<<14)^(w<<23|t>>>9))+(k>>>0<M>>>
-0?1:0),k=k+C,A=A+Y+(k>>>0<C>>>0?1:0),k=k+ea,A=A+ia+(k>>>0<ea>>>0?1:0),k=k+e,A=A+u+(k>>>0<e>>>0?1:0),e=D+ha,B=z+B+(e>>>0<D>>>0?1:0),X=V,M=L,V=U,L=K,U=w,K=t,t=J+k|0,w=W+A+(t>>>0<J>>>0?1:0)|0,W=I,J=F,I=H,F=E,H=v,E=s,s=k+e|0,v=A+B+(s>>>0<k>>>0?1:0)|0}m=g.low=m+s;g.high=q+v+(m>>>0<s>>>0?1:0);N=n.low=N+E;n.high=r+H+(N>>>0<E>>>0?1:0);O=b.low=O+F;b.high=Z+I+(O>>>0<F>>>0?1:0);P=d.low=P+J;d.high=$+W+(P>>>0<J>>>0?1:0);Q=c.low=Q+t;c.high=aa+w+(Q>>>0<t>>>0?1:0);R=j.low=R+K;j.high=ba+U+(R>>>0<K>>>0?1:0);S=l.low=
-S+L;l.high=ca+V+(S>>>0<L>>>0?1:0);T=h.low=T+M;h.high=da+X+(T>>>0<M>>>0?1:0)},_doFinalize:function(){var a=this._data,f=a.words,h=8*this._nDataBytes,g=8*a.sigBytes;f[g>>>5]|=128<<24-g%32;f[(g+128>>>10<<5)+30]=Math.floor(h/4294967296);f[(g+128>>>10<<5)+31]=h;a.sigBytes=4*f.length;this._process();return this._hash.toX32()},clone:function(){var a=r.clone.call(this);a._hash=this._hash.clone();return a},blockSize:32});m.SHA512=r._createHelper(f);m.HmacSHA512=r._createHmacHelper(f)})();
-
-
-/*
-CryptoJS v3.1.2
-code.google.com/p/crypto-js
-(c) 2009-2013 by Jeff Mott. All rights reserved.
-code.google.com/p/crypto-js/wiki/License
-*/
-var CryptoJS=CryptoJS||function(g,j){var e={},d=e.lib={},m=function(){},n=d.Base={extend:function(a){m.prototype=this;var c=new m;a&&c.mixIn(a);c.hasOwnProperty("init")||(c.init=function(){c.$super.init.apply(this,arguments)});c.init.prototype=c;c.$super=this;return c},create:function(){var a=this.extend();a.init.apply(a,arguments);return a},init:function(){},mixIn:function(a){for(var c in a)a.hasOwnProperty(c)&&(this[c]=a[c]);a.hasOwnProperty("toString")&&(this.toString=a.toString)},clone:function(){return this.init.prototype.extend(this)}},
-q=d.WordArray=n.extend({init:function(a,c){a=this.words=a||[];this.sigBytes=c!=j?c:4*a.length},toString:function(a){return(a||l).stringify(this)},concat:function(a){var c=this.words,p=a.words,f=this.sigBytes;a=a.sigBytes;this.clamp();if(f%4)for(var b=0;b<a;b++)c[f+b>>>2]|=(p[b>>>2]>>>24-8*(b%4)&255)<<24-8*((f+b)%4);else if(65535<p.length)for(b=0;b<a;b+=4)c[f+b>>>2]=p[b>>>2];else c.push.apply(c,p);this.sigBytes+=a;return this},clamp:function(){var a=this.words,c=this.sigBytes;a[c>>>2]&=4294967295<<
-32-8*(c%4);a.length=g.ceil(c/4)},clone:function(){var a=n.clone.call(this);a.words=this.words.slice(0);return a},random:function(a){for(var c=[],b=0;b<a;b+=4)c.push(4294967296*g.random()|0);return new q.init(c,a)}}),b=e.enc={},l=b.Hex={stringify:function(a){var c=a.words;a=a.sigBytes;for(var b=[],f=0;f<a;f++){var d=c[f>>>2]>>>24-8*(f%4)&255;b.push((d>>>4).toString(16));b.push((d&15).toString(16))}return b.join("")},parse:function(a){for(var c=a.length,b=[],f=0;f<c;f+=2)b[f>>>3]|=parseInt(a.substr(f,
-2),16)<<24-4*(f%8);return new q.init(b,c/2)}},k=b.Latin1={stringify:function(a){var c=a.words;a=a.sigBytes;for(var b=[],f=0;f<a;f++)b.push(String.fromCharCode(c[f>>>2]>>>24-8*(f%4)&255));return b.join("")},parse:function(a){for(var c=a.length,b=[],f=0;f<c;f++)b[f>>>2]|=(a.charCodeAt(f)&255)<<24-8*(f%4);return new q.init(b,c)}},h=b.Utf8={stringify:function(a){try{return decodeURIComponent(escape(k.stringify(a)))}catch(b){throw Error("Malformed UTF-8 data");}},parse:function(a){return k.parse(unescape(encodeURIComponent(a)))}},
-u=d.BufferedBlockAlgorithm=n.extend({reset:function(){this._data=new q.init;this._nDataBytes=0},_append:function(a){"string"==typeof a&&(a=h.parse(a));this._data.concat(a);this._nDataBytes+=a.sigBytes},_process:function(a){var b=this._data,d=b.words,f=b.sigBytes,l=this.blockSize,e=f/(4*l),e=a?g.ceil(e):g.max((e|0)-this._minBufferSize,0);a=e*l;f=g.min(4*a,f);if(a){for(var h=0;h<a;h+=l)this._doProcessBlock(d,h);h=d.splice(0,a);b.sigBytes-=f}return new q.init(h,f)},clone:function(){var a=n.clone.call(this);
-a._data=this._data.clone();return a},_minBufferSize:0});d.Hasher=u.extend({cfg:n.extend(),init:function(a){this.cfg=this.cfg.extend(a);this.reset()},reset:function(){u.reset.call(this);this._doReset()},update:function(a){this._append(a);this._process();return this},finalize:function(a){a&&this._append(a);return this._doFinalize()},blockSize:16,_createHelper:function(a){return function(b,d){return(new a.init(d)).finalize(b)}},_createHmacHelper:function(a){return function(b,d){return(new w.HMAC.init(a,
-d)).finalize(b)}}});var w=e.algo={};return e}(Math);
-(function(){var g=CryptoJS,j=g.lib,e=j.WordArray,d=j.Hasher,m=[],j=g.algo.SHA1=d.extend({_doReset:function(){this._hash=new e.init([1732584193,4023233417,2562383102,271733878,3285377520])},_doProcessBlock:function(d,e){for(var b=this._hash.words,l=b[0],k=b[1],h=b[2],g=b[3],j=b[4],a=0;80>a;a++){if(16>a)m[a]=d[e+a]|0;else{var c=m[a-3]^m[a-8]^m[a-14]^m[a-16];m[a]=c<<1|c>>>31}c=(l<<5|l>>>27)+j+m[a];c=20>a?c+((k&h|~k&g)+1518500249):40>a?c+((k^h^g)+1859775393):60>a?c+((k&h|k&g|h&g)-1894007588):c+((k^h^
-g)-899497514);j=g;g=h;h=k<<30|k>>>2;k=l;l=c}b[0]=b[0]+l|0;b[1]=b[1]+k|0;b[2]=b[2]+h|0;b[3]=b[3]+g|0;b[4]=b[4]+j|0},_doFinalize:function(){var d=this._data,e=d.words,b=8*this._nDataBytes,l=8*d.sigBytes;e[l>>>5]|=128<<24-l%32;e[(l+64>>>9<<4)+14]=Math.floor(b/4294967296);e[(l+64>>>9<<4)+15]=b;d.sigBytes=4*e.length;this._process();return this._hash},clone:function(){var e=d.clone.call(this);e._hash=this._hash.clone();return e}});g.SHA1=d._createHelper(j);g.HmacSHA1=d._createHmacHelper(j)})();
-(function(){var g=CryptoJS,j=g.enc.Utf8;g.algo.HMAC=g.lib.Base.extend({init:function(e,d){e=this._hasher=new e.init;"string"==typeof d&&(d=j.parse(d));var g=e.blockSize,n=4*g;d.sigBytes>n&&(d=e.finalize(d));d.clamp();for(var q=this._oKey=d.clone(),b=this._iKey=d.clone(),l=q.words,k=b.words,h=0;h<g;h++)l[h]^=1549556828,k[h]^=909522486;q.sigBytes=b.sigBytes=n;this.reset()},reset:function(){var e=this._hasher;e.reset();e.update(this._iKey)},update:function(e){this._hasher.update(e);return this},finalize:function(e){var d=
-this._hasher;e=d.finalize(e);d.reset();return d.finalize(this._oKey.clone().concat(e))}})})();
-(function(){var g=CryptoJS,j=g.lib,e=j.Base,d=j.WordArray,j=g.algo,m=j.HMAC,n=j.PBKDF2=e.extend({cfg:e.extend({keySize:4,hasher:j.SHA1,iterations:1}),init:function(d){this.cfg=this.cfg.extend(d)},compute:function(e,b){for(var g=this.cfg,k=m.create(g.hasher,e),h=d.create(),j=d.create([1]),n=h.words,a=j.words,c=g.keySize,g=g.iterations;n.length<c;){var p=k.update(b).finalize(j);k.reset();for(var f=p.words,v=f.length,s=p,t=1;t<g;t++){s=k.finalize(s);k.reset();for(var x=s.words,r=0;r<v;r++)f[r]^=x[r]}h.concat(p);
-a[0]++}h.sigBytes=4*c;return h}});g.PBKDF2=function(d,b,e){return n.create(e).compute(d,b)}})();
-
-
