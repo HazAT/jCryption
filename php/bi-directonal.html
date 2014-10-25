@@ -3,12 +3,12 @@
 	<head>
     	<meta charset="utf-8">
 		<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-		<script type="text/javascript" src="../jquery.jcryption.3.0.js"></script>
+		<script type="text/javascript" src="../jquery.jcryption.3.1.0.js"></script>
 		<script type="text/javascript">
-			
+
 			$(function() {
-				var password = $.jCryption.encrypt("XXXX", "trubo");
-				
+				var password = $.jCryption.encrypt("XXXX", "turbo");
+
 				$.jCryption.authenticate(password, "jcryption.php?getPublicKey=true", "jcryption.php?handshake=true", function(AESKey) {
 					$("#text,#encrypt,#decrypt,#serverChallenge").attr("disabled",false);
 					$("#status").html('<span style="font-size: 16px;">Let\'s Rock!</span>');
@@ -48,7 +48,7 @@
 						}
 					});
 				});
-				
+
 				$("#decrypt").click(function() {
 					var decryptedString = $.jCryption.decrypt($("#text").val(), password);
 					$("#log").prepend("\n").prepend("----------");
