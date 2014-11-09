@@ -10,10 +10,10 @@
  * openssl rsa -pubout -in rsa_1024_priv.pem -out rsa_1024_pub.pem
  */
 
-require_once('include/sqAES.php');
-require_once('include/JCryption.php');
+require_once 'include/sqAES.php';
+require_once 'include/JCryption.php';
 
-$jc = new JCryption('rsa_1024_pub.pem','rsa_1024_priv.pem');
+$jc = new JCryption('rsa_1024_pub.pem', 'rsa_1024_priv.pem');
 $jc->go();
 header('Content-type: text/plain');
 print_r($_POST);

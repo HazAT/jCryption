@@ -1,7 +1,7 @@
 <?php
 
-require_once('include/sqAES.php');
-require_once('include/JCryption.php');
+require_once 'include/sqAES.php';
+require_once 'include/JCryption.php';
 
 $postBefore = print_r($_POST, true);
 
