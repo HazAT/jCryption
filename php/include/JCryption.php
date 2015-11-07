@@ -1,6 +1,6 @@
 <?php
 
-class jcryption
+class JCryption
 {
     private $private_key_file;
     private $public_key_file;
@@ -51,7 +51,7 @@ class jcryption
 
         $encrypted = sqAES::crypt($key, $toEncrypt);
 
-        Header('Content-type: application/json');
+        header('Content-type: application/json');
         echo json_encode(
             array(
                 'encrypted' => $encrypted,

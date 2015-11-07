@@ -21,6 +21,7 @@
 					$("#log").prepend("\n").prepend("----------");
 					$("#log").prepend("\n").prepend("String: " + $("#text").val());
 					$("#log").prepend("\n").prepend("Encrypted: " + encryptedString);
+					$("#text").val(encryptedString);
 					$.ajax({
 						url: "jcryption.php",
 						dataType: "json",
@@ -53,6 +54,7 @@
 					var decryptedString = $.jCryption.decrypt($("#text").val(), password);
 					$("#log").prepend("\n").prepend("----------");
 					$("#log").prepend("\n").prepend("Decrypted: " + decryptedString);
+					$("#text").val(decryptedString);
 				});
 
 			});
